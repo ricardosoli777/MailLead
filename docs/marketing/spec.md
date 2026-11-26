@@ -93,6 +93,6 @@ Os limites de R5 são propostos abaixo das faixas de alerta da AWS (cerca de 5% 
 - W2 Resposta "sair" bloqueia novos envios.
 
 ## Perguntas em aberto
-1. Região do SES; a conta já tem acesso de produção? Cota diária e por segundo?
+1. Respondida em 2026-11-26: SES em `us-east-1`, produção, 50.000 envios por 24 h, 14 por segundo.
 2. Uso só seu ou venda a clientes?
 3. WhatsApp: API oficial, Evolution ou ambos?

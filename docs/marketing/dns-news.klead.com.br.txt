@@ -1,0 +1,9 @@
+; Amazon SES (us-east-1): registros de news.klead.com.br
+; Importar em Cloudflare > klead.com.br > DNS > Records > Import and Export,
+; com a opcao de proxy DESMARCADA.
+qn7oa2tkcpabkwbbytfsfxss53igxlaj._domainkey.news.klead.com.br.	1	IN	CNAME	qn7oa2tkcpabkwbbytfsfxss53igxlaj.dkim.amazonses.com.
+pkhypcsb4bp5ykpkpncddit2tbeaijjp._domainkey.news.klead.com.br.	1	IN	CNAME	pkhypcsb4bp5ykpkpncddit2tbeaijjp.dkim.amazonses.com.
+alvb2bb2b5m433kawwzf743nqlr23mcr._domainkey.news.klead.com.br.	1	IN	CNAME	alvb2bb2b5m433kawwzf743nqlr23mcr.dkim.amazonses.com.
+bounce.news.klead.com.br.	1	IN	MX	10 feedback-smtp.us-east-1.amazonses.com.
+bounce.news.klead.com.br.	1	IN	TXT	"v=spf1 include:amazonses.com ~all"
+_dmarc.news.klead.com.br.	1	IN	TXT	"v=DMARC1; p=reject; adkim=s; aspf=r;"

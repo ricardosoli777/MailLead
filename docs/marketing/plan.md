@@ -17,8 +17,8 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 
 ### Onda 0 — Preparação (sem código de produto)
 - [ ] Responder as perguntas em aberto.
-- [ ] SES: acesso de produção, cota diária e por segundo, região.
-- [ ] Criar `news.klead.com.br` na Cloudflare (dono) e configurar SPF, DKIM, DMARC (começar em `p=none` com relatórios).
+- [x] SES: `us-east-1`, produção, 50.000 por 24 h, 14 por segundo (2026-11-26).
+- [ ] `news.klead.com.br` cadastrado no SES; falta importar `dns-news.klead.com.br.txt` na Cloudflare e verificar. DMARC em `p=reject`, porque o domínio principal já usa `sp=reject`.
 - [ ] Escolher o nome e criar logo, selo e favicon (M1–M3); aplicar em Admin → Branding e conferir o que ainda mostra o nome original.
 - [ ] Cadastrar o domínio no Google Postmaster Tools.
 - [ ] Conferir as regras atuais de AWS, Gmail, Yahoo e Outlook.
