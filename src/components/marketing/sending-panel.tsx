@@ -68,7 +68,7 @@ export function SendingPanel() {
 		}
 	}
 
-	const notice = message && <p role="status" className={`rounded-lg px-3 py-2 text-sm ${message.error ? "bg-red-50 text-red-800" : "bg-green-50 text-green-800"}`}>{message.text}</p>;
+	const notice = message && <p role="status" className={`fixed inset-x-4 bottom-4 z-50 mx-auto max-w-xl rounded-lg px-4 py-3 text-sm shadow-lg ${message.error ? "bg-red-50 text-red-800" : "bg-green-50 text-green-800"}`}>{message.text}</p>;
 	if (!status || !sender) return notice || <p className="text-sm text-neutral-500">Carregando…</p>;
 	const ready = status.checks.length > 0 && status.checks.every((check) => check.ok);
 
