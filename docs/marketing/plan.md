@@ -28,11 +28,13 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 **Sai quando:** domínio verificado no SES e e-mail de teste passando em SPF, DKIM e DMARC.
 
 ### Onda 1 — Modelos (T1–T8)
-- [ ] Aba Marketing e `MARKETING_DB`.
-- [ ] Editor de blocos, renderizador HTML e texto, imagens no R2.
-- [ ] Rodapé obrigatório, quatro modelos, prévia, envio de teste, uso no compositor.
+- [x] Aba Marketing e `MARKETING_DB`.
+- [x] Editor de blocos, renderizador HTML e texto, imagens no R2.
+- [x] Rodapé obrigatório, quatro modelos, prévia, envio de teste, uso no compositor.
 
 **Sai quando:** os modelos são conferidos no Gmail, no Outlook e no celular.
+
+**Estado em 2026-11-26:** construída e testada localmente, ainda não publicada; falta conferir no Gmail, Outlook e celular.
 
 ### Onda 2 — Contatos, consentimento e descadastro (C1–C6, U1–U4, U6, U7)
 - [ ] Contatos, listas, etiquetas, consentimento, importação.

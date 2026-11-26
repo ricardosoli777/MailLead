@@ -83,6 +83,11 @@
 			"database_name": "mailflare",
 			"migrations_dir": "drizzle/migrations",
 		},
+		{
+			"binding": "MARKETING_DB",
+			"database_name": "maillead-marketing",
+			"migrations_dir": "drizzle-marketing",
+		},
 	],
 	"r2_buckets": [
 		{
