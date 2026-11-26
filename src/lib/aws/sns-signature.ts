@@ -75,7 +75,8 @@ export function spkiFromCertificate(der: Uint8Array): Uint8Array {
 async function fetchCertificate(url: string): Promise<ArrayBuffer> {
 	const cached = certCache.get(url);
 	if (cached) return cached;
-	const pending = fetch(url, { redirect: "error", signal: AbortSignal.timeout(5000) }).then(async (response) => {
+	// Workers reject redirect: "error"; with "manual" a redirect is a non-ok response, refused below.
+	const pending = fetch(url, { redirect: "manual", signal: AbortSignal.timeout(5000) }).then(async (response) => {
 		if (!response.ok) throw new Error(`Signing certificate fetch failed: ${response.status}`);
 		const der = pemToDer(await response.text());
 		return der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer;

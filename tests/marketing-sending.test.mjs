@@ -205,3 +205,7 @@ test("load: 2,000 recipients queue once and drain without repeats", async () => 
 	assert.equal(sent.length, 2000);
 	assert.equal(new Set(sent.map((message) => message.to)).size, 2000);
 });
+
+test("the SNS certificate fetch uses only options Workers accept", () => {
+	assert.doesNotMatch(readFileSync(join(root, "src/lib/aws/sns-signature.ts"), "utf8"), /redirect: "error",/);
+});
