@@ -44,7 +44,7 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 
 **Sai quando:** os testes provam que quem saiu não pode receber.
 
-**Estado em 2026-11-26:** construída e testada localmente (`tests/marketing-contacts.test.mjs`), ainda não publicada. U2 (cabeçalhos no e-mail recebido) só é conferido com o motor de envio da onda 3, que deve usar `renderMarketingEmail` e `canReceive`.
+**Estado em 2026-11-26:** publicada e testada localmente (`tests/marketing-contacts.test.mjs`). U2 (cabeçalhos no e-mail recebido) só é conferido com o motor de envio da onda 3, que deve usar `renderMarketingEmail` e `canReceive`.
 
 ### Onda 3 — Motor de envio e proteção (U5, R1–R5, R10, K2)
 - [ ] Fila, ritmo, cota, aquecimento, eventos SNS, disjuntor.
