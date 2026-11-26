@@ -2,10 +2,12 @@
  * Sends pending campaign messages. Rules that must hold: a person gets a campaign at most once (K2),
  * a late unsubscribe still counts (U3), and nothing leaves while the breaker is open (R5).
  */
+import { startDueCampaigns } from "./campaigns";
 import { canReceive } from "./contacts";
 import { parseDesign, renderMarketingEmail } from "./render";
+import { addTracking } from "./tracking";
 import type { EngineDeps, Provider, RunResult, SenderSettings } from "./sending-types";
-import { BREAKER_WINDOW_MS, DAY_MS, breakerReason, formatFrom, warmupLimit } from "./sending-utils";
+import { BREAKER_WINDOW_MS, DAY_MS, DEFAULT_WEEKLY_LIMIT, breakerReason, formatFrom, warmupLimit } from "./sending-utils";
 import { createUnsubscribeToken, getSigningSecret, unsubscribeUrl } from "./unsubscribe";
 
 export const BATCH_SIZE = 50;
@@ -13,6 +15,7 @@ export const BATCH_SIZE = 50;
 const STALE_CLAIM_MS = 15 * 60 * 1000;
 const LEASE_MS = 4 * 60 * 1000;
 const BREAKER_EVERY = 10;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function readSetting<T>(db: D1Database, key: string): Promise<T | null> {
 	const row = await db.prepare("SELECT value FROM marketing_settings WHERE key = ?").bind(key).first<{ value: string }>();
@@ -24,28 +27,6 @@ export async function writeSetting(db: D1Database, key: string, value: unknown):
 }
 
 export const dropSetting = (db: D1Database, key: string) => db.prepare("DELETE FROM marketing_settings WHERE key = ?").bind(key).run();
-
-const PROVIDER_SQL = `CASE
-	WHEN substr(c.email, instr(c.email, '@') + 1) IN ('gmail.com', 'googlemail.com') THEN 'gmail'
-	WHEN substr(c.email, instr(c.email, '@') + 1) LIKE 'outlook.%' OR substr(c.email, instr(c.email, '@') + 1) LIKE 'hotmail.%' OR substr(c.email, instr(c.email, '@') + 1) LIKE 'live.%' THEN 'outlook'
-	WHEN substr(c.email, instr(c.email, '@') + 1) LIKE 'yahoo.%' THEN 'yahoo'
-	ELSE 'other' END`;
-
-/** Freezes the content and the audience. Only people allowed to receive right now are queued. */
-export async function createCampaign(db: D1Database, input: { name: string; listId: string; subject: string; design: unknown }, now = Date.now()) {
-	const parsed = parseDesign(input.design);
-	if ("error" in parsed) throw new Error(parsed.error);
-	const id = crypto.randomUUID();
-	await db.prepare("INSERT INTO marketing_campaigns (id, name, list_id, subject, design, status, created_at) VALUES (?, ?, ?, ?, ?, 'running', ?)")
-		.bind(id, input.name, input.listId, input.subject, JSON.stringify(parsed.design), now).run();
-	const queued = await db.prepare(`INSERT OR IGNORE INTO marketing_sends (id, campaign_id, contact_id, provider)
-		SELECT lower(hex(randomblob(16))), ?, c.id, ${PROVIDER_SQL}
-		FROM marketing_list_members m JOIN marketing_contacts c ON c.id = m.contact_id
-		WHERE m.list_id = ? AND m.unsubscribed_at IS NULL
-		AND EXISTS (SELECT 1 FROM marketing_consents k WHERE k.contact_id = c.id)
-		AND NOT EXISTS (SELECT 1 FROM marketing_suppressions s WHERE s.email_hash = c.email_hash)`).bind(id, input.listId).run();
-	return { id, queued: queued.meta.changes };
-}
 
 export async function breakerStats(db: D1Database, now: number) {
 	const resetAt = (await readSetting<number>(db, "breaker_reset_at")) ?? 0;
@@ -96,6 +77,9 @@ export async function runEngine(db: D1Database, deps: EngineDeps, batchSize = BA
 	const stop = (blocked: string) => ({ ...result, blocked });
 
 	await db.prepare("UPDATE marketing_sends SET status = 'unknown', error = 'envio interrompido' WHERE status = 'sending' AND claimed_at < ?").bind(now() - STALE_CLAIM_MS).run();
+	await startDueCampaigns(db, now());
+	// Erased people leave rows that nothing would ever pick up.
+	await db.prepare("UPDATE marketing_sends SET status = 'skipped', error = 'contato apagado' WHERE status = 'pending' AND NOT EXISTS (SELECT 1 FROM marketing_contacts c WHERE c.id = marketing_sends.contact_id)").run();
 	await db.prepare("UPDATE marketing_campaigns SET status = 'done' WHERE status = 'running' AND NOT EXISTS (SELECT 1 FROM marketing_sends s WHERE s.campaign_id = marketing_campaigns.id AND s.status IN ('pending', 'sending'))").run();
 	if (!(await db.prepare("SELECT 1 AS ok FROM marketing_sends s JOIN marketing_campaigns p ON p.id = s.campaign_id WHERE s.status = 'pending' AND p.status = 'running' LIMIT 1").first())) return result;
 
@@ -141,7 +125,8 @@ export async function runEngine(db: D1Database, deps: EngineDeps, batchSize = BA
 				const tripped = await checkBreaker(db, now());
 				if (tripped) return stop(tripped);
 			}
-			const claim = await db.prepare("UPDATE marketing_sends SET status = 'sending', claimed_at = ? WHERE id = ? AND status = 'pending'").bind(now(), item.id).run();
+			// The campaign is checked here too, so pausing or cancelling takes effect inside a batch.
+			const claim = await db.prepare("UPDATE marketing_sends SET status = 'sending', claimed_at = ? WHERE id = ? AND status = 'pending' AND EXISTS (SELECT 1 FROM marketing_campaigns p WHERE p.id = marketing_sends.campaign_id AND p.status = 'running')").bind(now(), item.id).run();
 			if (!claim.meta.changes) continue;
 			const finish = (status: string, error = "") => db.prepare("UPDATE marketing_sends SET status = ?, error = ? WHERE id = ?").bind(status, error, item.id).run();
 
@@ -151,14 +136,26 @@ export async function runEngine(db: D1Database, deps: EngineDeps, batchSize = BA
 				continue;
 			}
 
+			// R8: nobody gets more than the chosen number of campaigns in seven days.
+			const weeklyLimit = settings.weeklyLimit ?? DEFAULT_WEEKLY_LIMIT;
+			if (weeklyLimit > 0) {
+				const recent = await db.prepare("SELECT COUNT(*) AS n FROM marketing_sends WHERE contact_id = ? AND sent_at > ?").bind(item.contact_id, now() - WEEK_MS).first<{ n: number }>();
+				if (recent!.n >= weeklyLimit) {
+					await finish("skipped", "limite de frequência");
+					result.skipped++;
+					continue;
+				}
+			}
+
 			let message;
 			try {
 				const parsed = parseDesign(JSON.parse(item.design));
 				if ("error" in parsed) throw new Error(parsed.error);
-				const url = unsubscribeUrl(settings.origin, await createUnsubscribeToken(secret, item.contact_id));
+				const url = `${unsubscribeUrl(settings.origin, await createUnsubscribeToken(secret, item.contact_id))}?c=${item.campaign_id}`;
 				const fields = JSON.parse(item.fields || "{}") as Record<string, string>;
 				const rendered = renderMarketingEmail(parsed.design, item.subject, { ...fields, nome: item.name, email: item.email }, url);
-				message = { to: item.email, from, replyTo: settings.replyTo, ...rendered };
+				const html = await addTracking(rendered.html, { secret, origin: settings.origin, sendId: item.id, unsubscribeUrl: url });
+				message = { to: item.email, from, replyTo: settings.replyTo, ...rendered, html };
 			} catch (error) {
 				await finish("failed", errorInfo(error).message);
 				result.failed++;

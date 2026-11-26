@@ -56,10 +56,12 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 **Estado em 2026-11-26:** construída e testada localmente (`tests/marketing-sending.test.mjs`), publicada. A tela de campanhas é a onda 4.
 
 ### Onda 4 — Campanhas e relatórios (K1, K3, R7–R9)
-- [ ] Criar, revisar, agendar, pausar; relatórios.
-- [ ] Primeira campanha real, pequena, só para contatos engajados.
+- [x] Campanhas na hora ou agendadas, por lista e etiqueta, com pausa, retomada e cancelamento.
+- [x] Relatório: enviados, entregues, devoluções, reclamações, descadastros, cliques e aberturas.
+- [x] Inativos de 180 dias fora por padrão (R7), limite de campanhas por pessoa em 7 dias (R8), revisão antes do envio (R9).
+- [ ] Enviar uma campanha real a uma lista pequena depois de publicada.
 
-**Sai quando:** a primeira campanha fecha dentro dos limites. Aqui já há um produto utilizável.
+**Estado em 2026-11-26:** construída e testada localmente (`tests/marketing-sending.test.mjs`), ainda não publicada.
 
 ### Onda 5 — Captura e integrações (R6, I1–I3)
 - [ ] Formulários, confirmação dupla, API e webhook.

@@ -6,6 +6,7 @@ export type SenderSettings = {
 	replyTo: string;
 	/** Public https origin used in unsubscribe links; the cron has no request to read it from. */
 	origin: string;
+	weeklyLimit?: number;
 	hourlyByProvider: Record<Provider, number>;
 };
 

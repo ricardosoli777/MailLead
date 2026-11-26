@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAwsConfig } from "@/lib/aws/config";
 import { breakerStats, dropSetting, readSetting, resetBreaker, warmupState, writeSetting } from "@/lib/marketing/engine";
 import type { SenderSettings } from "@/lib/marketing/sending-types";
-import { DEFAULT_HOURLY, readSenderSettings } from "@/lib/marketing/sending-utils";
+import { DEFAULT_HOURLY, DEFAULT_WEEKLY_LIMIT, readSenderSettings } from "@/lib/marketing/sending-utils";
 import { requireMarketing } from "@/lib/marketing/server";
 import { checkSender, getQuota } from "@/lib/marketing/ses-marketing";
 
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 		readSetting<{ reason: string; at: number }>(db, "breaker"),
 	]);
 	return NextResponse.json({
-		sender: sender ?? { fromName: "", fromEmail: "", replyTo: "", origin: new URL(request.url).origin, hourlyByProvider: DEFAULT_HOURLY },
+		sender: sender ?? { fromName: "", fromEmail: "", replyTo: "", origin: new URL(request.url).origin, hourlyByProvider: DEFAULT_HOURLY, weeklyLimit: DEFAULT_WEEKLY_LIMIT },
 		saved: !!sender,
 		checks,
 		quota,

@@ -11,7 +11,7 @@ const CHECK_TTL_MS = 60 * 60 * 1000;
 export async function runMarketingSending(env: CloudflareEnv): Promise<void> {
 	const db = env.MARKETING_DB;
 	if (!db) return;
-	if (!(await db.prepare("SELECT 1 AS ok FROM marketing_campaigns WHERE status = 'running' LIMIT 1").first())) return;
+	if (!(await db.prepare("SELECT 1 AS ok FROM marketing_campaigns WHERE status = 'running' OR (status = 'scheduled' AND (scheduled_at IS NULL OR scheduled_at <= ?)) LIMIT 1").bind(Date.now()).first())) return;
 	const config = await getAwsConfig(env);
 	if (!config) return;
 	const result = await runEngine(db, {

@@ -18,6 +18,9 @@ async function bundle(entry, outfile) {
 
 const store = await bundle("src/lib/marketing/contacts.ts", "contacts.mjs");
 const engine = await bundle("src/lib/marketing/engine.ts", "engine.mjs");
+const campaigns = await bundle("src/lib/marketing/campaigns.ts", "campaigns.mjs");
+const tracking = await bundle("src/lib/marketing/tracking.ts", "tracking.mjs");
+const checks = await bundle("src/lib/marketing/campaign-checks.ts", "checks.mjs");
 const utils = await bundle("src/lib/marketing/sending-utils.ts", "utils.mjs");
 const feedback = await bundle("src/lib/marketing/feedback.ts", "feedback.mjs");
 
@@ -57,7 +60,7 @@ async function setup(count = 3, { domain = "gmail.com", warmupDaysAgo = 0 } = {}
 	await store.importContacts(db, rows, { listId: list.id, consent, origin: "teste" });
 	await engine.writeSetting(db, "sender", settings);
 	if (warmupDaysAgo) await engine.writeSetting(db, "warmup_started_at", NOW - warmupDaysAgo * 86400000);
-	const campaign = await engine.createCampaign(db, { name: "Novidades", listId: list.id, subject: "Oi {{nome|cliente}}", design }, NOW);
+	const campaign = await campaigns.createCampaign(db, { name: "Novidades", listId: list.id, subject: "Oi {{nome|cliente}}", design }, NOW);
 	const sent = [];
 	const deps = {
 		quota: async () => quota,
@@ -208,4 +211,104 @@ test("load: 2,000 recipients queue once and drain without repeats", async () => 
 
 test("the SNS certificate fetch uses only options Workers accept", () => {
 	assert.doesNotMatch(readFileSync(join(root, "src/lib/aws/sns-signature.ts"), "utf8"), /redirect: "error",/);
+});
+
+const report = async (db, id) => (await campaigns.listCampaigns(db)).find((item) => item.id === id);
+
+test("K1: scheduled waits for its time; pause and cancel stop the rest", async () => {
+	const { db, list, sent, deps } = await setup(0);
+	await store.importContacts(db, [0, 1, 2].map((index) => ({ line: index + 2, email: `s${index}@gmail.com`, name: "", fields: {} })), { listId: list.id, consent: { source: "x", text: "y", consentedAt: NOW }, origin: "teste" });
+	const later = await campaigns.createCampaign(db, { name: "Depois", listId: list.id, subject: "Oi", design, scheduledAt: NOW + 3600000 }, NOW);
+	assert.equal(later.queued, 0);
+	await engine.runEngine(db, deps);
+	assert.equal(sent.length, 0);
+	await campaigns.changeCampaign(db, later.id, "pause");
+	await engine.runEngine(db, { ...deps, now: () => NOW + 7200000 });
+	assert.equal(sent.length, 0);
+	await campaigns.changeCampaign(db, later.id, "resume");
+	// Paused in the middle of a batch: what was not claimed stays.
+	await engine.runEngine(db, {
+		...deps,
+		now: () => NOW + 7200000,
+		send: async (message) => {
+			const result = await deps.send(message);
+			await campaigns.changeCampaign(db, later.id, "pause");
+			return result;
+		},
+	});
+	assert.equal(sent.length, 1);
+	assert.equal(await campaigns.changeCampaign(db, later.id, "cancel"), true);
+	assert.equal(await campaigns.changeCampaign(db, later.id, "resume"), false);
+	await engine.runEngine(db, { ...deps, now: () => NOW + 9000000 });
+	assert.equal(sent.length, 1);
+	const numbers = await report(db, later.id);
+	assert.deepEqual([numbers.status, numbers.total, numbers.sent, numbers.skipped, numbers.pending], ["cancelled", 3, 1, 2, 0]);
+});
+
+test("segment by tag, weekly limit and inactive people", async () => {
+	const { db, list, sent, deps } = await setup(2);
+	await engine.runEngine(db, deps);
+	await store.importContacts(db, [{ line: 2, email: "vip@gmail.com", name: "", fields: {} }], { listId: list.id, consent: { source: "x", text: "y", consentedAt: NOW }, tags: ["vip"], origin: "teste" });
+	assert.equal((await campaigns.createCampaign(db, { name: "VIP", listId: list.id, subject: "Oi", design, tag: "vip" }, NOW)).queued, 1);
+	await engine.runEngine(db, deps);
+
+	await engine.writeSetting(db, "sender", { ...settings, weeklyLimit: 1 });
+	await campaigns.createCampaign(db, { name: "Outra", listId: list.id, subject: "Oi", design }, NOW);
+	const before = sent.length;
+	await engine.runEngine(db, deps);
+	assert.equal(sent.length, before);
+
+	// 200 days later, silent people are left out unless asked for; a click keeps someone active.
+	const later = NOW + 200 * 86400000;
+	const one = db.sqlite.prepare("SELECT id FROM marketing_sends WHERE sent_at IS NOT NULL LIMIT 1").get();
+	await tracking.recordClick(db, one.id, later - 1000);
+	assert.deepEqual({ ...(await campaigns.countAudience(db, list.id, "", later)) }, { total: 3, inactive: 2 });
+	assert.equal((await campaigns.createCampaign(db, { name: "Ativos", listId: list.id, subject: "Oi", design }, later)).queued, 1);
+	assert.equal((await campaigns.createCampaign(db, { name: "Todos", listId: list.id, subject: "Oi", design, includeInactive: true }, later)).queued, 3);
+});
+
+test("K3: opens, clicks and unsubscribes are counted; only signed links redirect", async () => {
+	const { db, list, sent, deps } = await setup(0);
+	await store.importContacts(db, [{ line: 2, email: "a@gmail.com", name: "", fields: {} }], { listId: list.id, consent: { source: "x", text: "y", consentedAt: NOW }, origin: "teste" });
+	const withLink = { ...design, blocks: [{ type: "button", label: "Ver", url: "https://klead.com.br/oferta?a=1&b=2" }] };
+	const { id } = await campaigns.createCampaign(db, { name: "Links", listId: list.id, subject: "Oi", design: withLink }, NOW);
+	await engine.runEngine(db, deps);
+	const [{ html, headers }] = sent;
+	const click = new URL(/href="(https:\/\/mail\.klead\.com\.br\/api\/marketing\/c\/[^"]+)"/.exec(html)[1].replace(/&amp;/g, "&"));
+	const token = click.pathname.split("/").pop();
+	const destination = click.searchParams.get("u");
+	assert.equal(destination, "https://klead.com.br/oferta?a=1&b=2");
+	const secret = db.sqlite.prepare("SELECT value FROM marketing_settings WHERE key = 'unsubscribe_secret'").get().value;
+	const sendId = await tracking.readClickToken(secret, token, destination);
+	assert.ok(sendId);
+	assert.equal(await tracking.readClickToken(secret, token, "https://golpe.example"), null);
+	// The unsubscribe link is never rewritten, and carries the campaign for the report.
+	assert.match(headers["List-Unsubscribe"], new RegExp(`/api/marketing/u/[^?]+\\?c=${id}>$`));
+	assert.match(html, /href="https:\/\/mail\.klead\.com\.br\/api\/marketing\/u\//);
+	const open = /<img src="https:\/\/mail\.klead\.com\.br\/api\/marketing\/o\/([^"]+)"/.exec(html)[1];
+	assert.equal(await tracking.readOpenToken(secret, open), sendId);
+	assert.equal(await tracking.readOpenToken(secret, `${sendId}.x`), null);
+	await tracking.recordClick(db, sendId, NOW);
+	const contact = (await store.listContacts(db, { q: "a@" })).contacts[0];
+	await campaigns.markUnsubscribed(db, contact.id, id, NOW);
+	const numbers = await report(db, id);
+	assert.deepEqual([numbers.sent, numbers.opened, numbers.clicked, numbers.unsubscribed], [1, 1, 1, 1]);
+});
+
+test("erasing a queued contact does not leave the campaign stuck", async () => {
+	const { db, campaign, sent, deps } = await setup(2);
+	const [first] = (await store.listContacts(db, { q: "p0@" })).contacts;
+	await store.eraseContact(db, first.id);
+	await engine.runEngine(db, deps);
+	await engine.runEngine(db, deps);
+	assert.equal(sent.length, 1);
+	assert.equal((await report(db, campaign.id)).status, "done");
+});
+
+test("R9: warnings about subject, images, weight and dead links", async () => {
+	assert.equal(checks.contentWarnings("Novidades de novembro", "<p>oi</p>", "um texto normal").length, 0);
+	assert.equal(checks.contentWarnings("PROMOÇÃO IMPERDÍVEL!!", `<img src="a">${"x".repeat(110000)}`, "oi").length, 4);
+	assert.deepEqual(checks.extractLinks('<a href="https://a.com/?x=1&amp;y=2">a</a><a href="https://a.com/?x=1&amp;y=2">b</a>'), ["https://a.com/?x=1&y=2"]);
+	const answer = async (url) => ({ status: url.includes("missing") ? 404 : 200 });
+	assert.deepEqual(await checks.linkWarnings(["https://a.com/ok", "https://a.com/missing"], answer), ["Link com erro 404: https://a.com/missing"]);
 });

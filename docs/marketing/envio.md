@@ -40,3 +40,10 @@ Usuário IAM só para o MailLead, com esta política:
 
 ## Testar com o simulador do SES
 Cadastre como contatos `success@simulator.amazonses.com`, `bounce@simulator.amazonses.com` e `complaint@simulator.amazonses.com`, ou envie o teste da aba Envio para eles. Os dois últimos devem passar a aparecer como bloqueados.
+
+## Campanhas
+- A lista de quem recebe é lida quando a campanha começa, não quando é criada. O conteúdo é congelado na criação.
+- Pausar ou cancelar vale inclusive no meio de um lote.
+- Aberturas e cliques usam o endereço público do remetente (`/api/marketing/o/…` e `/api/marketing/c/…`). Só redireciona para destinos assinados pelo próprio MailLead. Os números são aproximados.
+- Quem recebeu há mais de 180 dias e não abriu nem clicou desde então fica de fora, salvo se marcar o contrário.
+- Limite por pessoa: 3 campanhas a cada 7 dias por padrão, ajustável na aba Envio. Quem passa do limite é pulado naquela campanha.

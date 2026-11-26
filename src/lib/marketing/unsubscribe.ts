@@ -14,20 +14,20 @@ export async function getSigningSecret(db: D1Database): Promise<string> {
 	return (await read())!.value;
 }
 
-async function sign(secret: string, value: string): Promise<string> {
+export async function hmac(secret: string, value: string): Promise<string> {
 	const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-	return base64url(new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`unsubscribe:${value}`))));
+	return base64url(new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value))));
 }
 
 export async function createUnsubscribeToken(secret: string, contactId: string): Promise<string> {
-	return `${contactId}.${await sign(secret, contactId)}`;
+	return `${contactId}.${await hmac(secret, `unsubscribe:${contactId}`)}`;
 }
 
 /** The contact id, or null when the token was not made by this installation. */
 export async function readUnsubscribeToken(secret: string, token: string): Promise<string | null> {
 	const [contactId, signature, extra] = token.split(".");
 	if (!contactId || !signature || extra !== undefined || token.length > 200) return null;
-	const expected = await sign(secret, contactId);
+	const expected = await hmac(secret, `unsubscribe:${contactId}`);
 	if (expected.length !== signature.length) return null;
 	let difference = 0;
 	for (let index = 0; index < expected.length; index++) difference |= expected.charCodeAt(index) ^ signature.charCodeAt(index);

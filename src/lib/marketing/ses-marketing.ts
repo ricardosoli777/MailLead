@@ -52,7 +52,7 @@ export async function checkSender(env: CloudflareEnv, db: D1Database, settings: 
 
 	const config = await getAwsConfig(env);
 	if (!config) {
-		add("aws", "Credenciais da AWS", false, "Cadastre as credenciais no quadro Conta Amazon SES, acima.");
+		add("aws", "Credenciais da AWS", false, "Cadastre as credenciais na aba Envio, no quadro Conta Amazon SES.");
 		return checks;
 	}
 	let identity: Identity | null = null;

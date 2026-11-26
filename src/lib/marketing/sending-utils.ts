@@ -7,6 +7,9 @@ export const BREAKER_MIN_SAMPLE = 50;
 export const BOUNCE_LIMIT = 0.02;
 export const COMPLAINT_LIMIT = 0.0008;
 
+/** R8: campaigns one person may get in seven days; 0 means no limit. */
+export const DEFAULT_WEEKLY_LIMIT = 3;
+
 export const DEFAULT_HOURLY: Record<Provider, number> = { gmail: 600, outlook: 300, yahoo: 300, other: 1000 };
 
 /** Daily ceiling for the n-th day of sending, day 1 being the first (R4). */
@@ -50,7 +53,9 @@ export function readSenderSettings(input: unknown): { settings: SenderSettings }
 	if (!ADDRESS.test(fromEmail)) return { error: "Informe um e-mail de remetente válido." };
 	if (replyTo && !ADDRESS.test(replyTo)) return { error: "O e-mail de resposta não é válido." };
 	if (!/^https:\/\/[^\s/]+$/i.test(origin)) return { error: "O endereço público precisa começar com https://." };
-	return { settings: { fromName, fromEmail, replyTo, origin, hourlyByProvider: readHourly(value.hourlyByProvider) } };
+	const weekly = value.weeklyLimit === undefined ? DEFAULT_WEEKLY_LIMIT : Number(value.weeklyLimit);
+	if (!Number.isInteger(weekly) || weekly < 0 || weekly > 100) return { error: "O limite por pessoa vai de 0 a 100 por semana." };
+	return { settings: { fromName, fromEmail, replyTo, origin, weeklyLimit: weekly, hourlyByProvider: readHourly(value.hourlyByProvider) } };
 }
 
 /** `"Name" <address>`, with the name encoded when it is not plain ASCII (RFC 2047). */

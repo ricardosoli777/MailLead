@@ -97,6 +97,7 @@ export function SendingPanel() {
 						))}
 					</div>
 				</div>
+				<Field label="Máximo de campanhas por pessoa a cada 7 dias (0 = sem limite)" type="number" value={String(sender.weeklyLimit ?? 3)} onChange={(value) => setSender({ ...sender, weeklyLimit: Number(value) })} />
 				<Button type="button" disabled={busy} onClick={() => void run("/api/marketing/sending", json("PUT", sender), "Remetente salvo.")}>Salvar</Button>
 			</section>
 

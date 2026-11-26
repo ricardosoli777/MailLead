@@ -5,6 +5,7 @@
  */
 import { getClientIp } from "@/lib/auth/client-ip";
 import { getEnv } from "@/lib/cloudflare";
+import { markUnsubscribed } from "@/lib/marketing/campaigns";
 import { getContact, saveListPreferences, unsubscribeAll } from "@/lib/marketing/contacts";
 import { getSigningSecret, readUnsubscribeToken } from "@/lib/marketing/unsubscribe";
 import { invalidLinkPage, preferencesPage, removedPage } from "@/lib/marketing/unsubscribe-page";
@@ -35,6 +36,10 @@ export async function POST(request: Request, context: Context) {
 	const access = await resolve(request, context);
 	if ("response" in access) return access.response;
 	const form = await request.formData().catch(() => null);
+	// The campaign whose link was used, only to count it in that campaign's report.
+	const campaignId = new URL(request.url).searchParams.get("c") ?? "";
+	const leaving = form?.get("List-Unsubscribe") === "One-Click" || form?.get("action") === "all";
+	if (leaving && campaignId) await markUnsubscribed(access.db, access.id, campaignId);
 	if (form?.get("List-Unsubscribe") === "One-Click") {
 		await unsubscribeAll(access.db, access.id, "um clique");
 		return removedPage();
