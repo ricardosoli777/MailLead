@@ -5,19 +5,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { authFetch } from "@/lib/auth/client";
 import { STARTERS } from "@/lib/marketing/starters";
 import type { Design, Template } from "@/lib/marketing/types";
+import { marketingRequest } from "./marketing-request";
 import { TemplateEditor } from "./template-editor";
 
 export type Draft = { id: string | null; name: string; subject: string; design: Design };
-
-export async function marketingRequest<T>(url: string, init?: RequestInit): Promise<T> {
-	const response = await authFetch(url, { cache: "no-store", ...init });
-	const data = (await response.json().catch(() => ({}))) as T & { error?: string };
-	if (!response.ok) throw new Error(data.error ?? "Não foi possível concluir a operação.");
-	return data;
-}
 
 export function TemplateManager() {
 	const [templates, setTemplates] = useState<Template[]>([]);

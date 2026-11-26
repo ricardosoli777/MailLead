@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { renderHtml, renderText } from "@/lib/marketing/render";
 import type { Block, Design } from "@/lib/marketing/types";
-import { marketingRequest, type Draft } from "./template-manager";
+import { marketingRequest } from "./marketing-request";
+import type { Draft } from "./template-manager";
 
 const NEW_BLOCKS: { label: string; block: Block }[] = [
 	{ label: "Título", block: { type: "heading", text: "Título" } },

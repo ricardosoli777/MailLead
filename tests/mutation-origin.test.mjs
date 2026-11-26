@@ -110,6 +110,7 @@ const EXEMPT = {
 	"setup/domain/mx/route.ts": "first-run setup, only works before any account exists",
 	"setup/prepare/route.ts": "first-run setup, refuses a database that already has tables",
 	"seed/route.ts": "development seeding, refuses outside a fresh dev database",
+	"marketing/u/[token]/route.ts": "public unsubscribe (RFC 8058): the HMAC-signed token is the only credential, no cookie is read",
 };
 const exemptReason = (relative) => Object.entries(EXEMPT).find(([prefix]) => relative === prefix || (prefix.endsWith("/") && relative.startsWith(prefix)))?.[1];
 // Handlers that read the session cookie themselves instead of through getCurrentUser must carry their own check.

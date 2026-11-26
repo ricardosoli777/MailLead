@@ -1,7 +1,22 @@
 "use client";
 
+import { useState } from "react";
+import { ContactManager } from "@/components/marketing/contact-manager";
 import { TemplateManager } from "@/components/marketing/template-manager";
+import { Button } from "@/components/ui/button";
+
+const TABS = [{ key: "templates", label: "Modelos" }, { key: "contacts", label: "Contatos" }] as const;
 
 export default function MarketingPage() {
-	return <TemplateManager />;
+	const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("templates");
+	return (
+		<div className="space-y-6">
+			<div className="flex gap-2">
+				{TABS.map((item) => (
+					<Button key={item.key} type="button" size="sm" variant={tab === item.key ? "default" : "outline"} aria-pressed={tab === item.key} onClick={() => setTab(item.key)}>{item.label}</Button>
+				))}
+			</div>
+			{tab === "templates" ? <TemplateManager /> : <ContactManager />}
+		</div>
+	);
 }

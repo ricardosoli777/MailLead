@@ -39,10 +39,12 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 **Estado em 2026-11-26:** construída e testada localmente, ainda não publicada; falta conferir no Gmail, Outlook e celular.
 
 ### Onda 2 — Contatos, consentimento e descadastro (C1–C6, U1–U4, U6, U7)
-- [ ] Contatos, listas, etiquetas, consentimento, importação.
-- [ ] Descadastro, preferências, supressão, exportar e apagar.
+- [x] Contatos, listas, etiquetas, consentimento, importação.
+- [x] Descadastro, preferências, supressão, exportar e apagar.
 
 **Sai quando:** os testes provam que quem saiu não pode receber.
+
+**Estado em 2026-11-26:** construída e testada localmente (`tests/marketing-contacts.test.mjs`), ainda não publicada. U2 (cabeçalhos no e-mail recebido) só é conferido com o motor de envio da onda 3, que deve usar `renderMarketingEmail` e `canReceive`.
 
 ### Onda 3 — Motor de envio e proteção (U5, R1–R5, R10, K2)
 - [ ] Fila, ritmo, cota, aquecimento, eventos SNS, disjuntor.

@@ -1,4 +1,5 @@
 import { MAX_BLOCKS, MAX_TEXT, type Block, type Design } from "./types";
+import { unsubscribeHeaders } from "./unsubscribe";
 
 const escapes: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 const esc = (value: string) => value.replace(/[&<>"']/g, (char) => escapes[char]);
@@ -62,7 +63,7 @@ function renderBlock(block: Block, accent: string, fill: (value: string) => stri
 
 const accentOf = (design: Design) => (/^#[0-9a-f]{6}$/i.test(design.accent) ? design.accent : "#0b57d0");
 
-export function renderHtml(design: Design, variables: Record<string, string> = {}): string {
+export function renderHtml(design: Design, variables: Record<string, string> = {}, unsubscribeUrl = ""): string {
 	const fill = (value: string) => applyVariables(value, variables);
 	const accent = accentOf(design);
 	const preheader = design.preheader ? `<div style="display:none;max-height:0;overflow:hidden">${esc(fill(design.preheader))}</div>` : "";
@@ -71,11 +72,12 @@ export function renderHtml(design: Design, variables: Record<string, string> = {
 		company && `<strong>${esc(fill(company))}</strong>`,
 		contact && esc(fill(contact)),
 		disclaimer && esc(fill(disclaimer)).replace(/\n/g, "<br>"),
+		safeUrl(unsubscribeUrl) && `<a href="${esc(unsubscribeUrl)}" style="color:#5f6368;text-decoration:underline">Descadastre-se aqui</a>`,
 	].filter(Boolean).join("<br>");
 	return `${preheader}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f8fc"><tr><td align="center" style="padding:24px 8px"><table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background-color:#ffffff;border-top:4px solid ${accent};border-radius:12px"><tr><td style="height:14px"></td></tr>${design.blocks.map((block) => renderBlock(block, accent, fill)).join("")}<tr><td style="padding:20px 32px 28px;border-top:1px solid #e8eaed;${font};font-size:12px;line-height:1.6;color:#5f6368;text-align:center">${footer}</td></tr></table></td></tr></table>`;
 }
 
-export function renderText(design: Design, variables: Record<string, string> = {}): string {
+export function renderText(design: Design, variables: Record<string, string> = {}, unsubscribeUrl = ""): string {
 	const fill = (value: string) => applyVariables(value, variables);
 	const parts = design.blocks.map((block) => {
 		switch (block.type) {
@@ -93,7 +95,18 @@ export function renderText(design: Design, variables: Record<string, string> = {
 		}
 	});
 	const { company, contact, disclaimer } = design.footer;
-	return [...parts, "--", fill(company), fill(contact), fill(disclaimer)].filter(Boolean).join("\n\n");
+	return [...parts, "--", fill(company), fill(contact), fill(disclaimer), safeUrl(unsubscribeUrl) && `Descadastre-se aqui: ${unsubscribeUrl}`].filter(Boolean).join("\n\n");
+}
+
+/** The only way to build a marketing message: it refuses to exist without a way out (U1). */
+export function renderMarketingEmail(design: Design, subject: string, variables: Record<string, string>, unsubscribeUrl: string) {
+	if (!/^https:\/\/\S+$/i.test(unsubscribeUrl)) throw new Error("Mensagem de marketing sem link de descadastro.");
+	return {
+		subject: applyVariables(subject, variables),
+		html: renderHtml(design, variables, unsubscribeUrl),
+		text: renderText(design, variables, unsubscribeUrl),
+		headers: unsubscribeHeaders(unsubscribeUrl),
+	};
 }
 
 const str = (value: unknown, max = MAX_TEXT) => (typeof value === "string" ? value.slice(0, max) : "");
