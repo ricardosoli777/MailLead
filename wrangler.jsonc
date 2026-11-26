@@ -86,6 +86,7 @@
 		{
 			"binding": "MARKETING_DB",
 			"database_name": "maillead-marketing",
+			"database_id": "27a7e14c-02ac-475a-a4ad-9a136de3d96e",
 			"migrations_dir": "drizzle-marketing",
 		},
 	],
