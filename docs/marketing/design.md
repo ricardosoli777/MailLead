@@ -8,7 +8,7 @@ Requisitos em [spec.md](spec.md). Proposta de 2026-11-26.
 | D1 | Aba **dentro** do MailFlare | Pedido do dono do projeto (substitui a sugestão anterior de app separado) | O fork passa a divergir do original |
 | D2 | **Banco D1 separado** (`MARKETING_DB`), migrações em `drizzle-marketing/` | As migrações do autor são numeradas em sequência; as nossas colidiriam. Também isola carga e volume | Sem junção direta com as tabelas do e-mail; só D1 (sem PostgreSQL/MySQL); backup próprio a criar |
 | D3 | Código isolado em `src/lib/marketing/`, `src/app/**/marketing/` e `/api/marketing/` | Poucos pontos de conflito: menu, `worker.ts`, `wrangler.jsonc` | — |
-| D4 | Fila própria `mailflare-marketing` | Disparo em massa não atrasa o e-mail normal | Um recurso a mais na Cloudflare |
+| D4 | Envio pelo agendamento de 5 minutos, em lotes, sem fila (revisto na onda 3) | Disparo em massa não passa pelas filas do e-mail normal e não cria recurso novo | Teto de cerca de 14 mil por dia; ver [envio.md](envio.md) |
 | D5 | SES com *configuration set* e subdomínio próprios | Separa reputação e eventos | A suspensão de uma conta SES afeta tudo que envia por ela |
 | D6 | Fork público | O código do MailFlare é AGPL-3.0; quem usa pela rede deve poder obter o fonte | Sem segredos no repositório |
 
@@ -23,7 +23,7 @@ Confirmar cada item na onda 0.
 `contacts`, `lists`, `list_members`, `tags`, `consents` (somente acréscimo), `suppressions`, `templates`, `assets`, `campaigns`, `sends` (única por campanha + contato, atende K2), `events`, `forms`, `api_hooks`, `flows`, `flow_steps`, `flow_runs`, `daily_counters`.
 
 ## Caminho de um envio
-campanha → materializa `sends` → fila em lotes → antes de **cada** envio confere consentimento, supressão, descadastro, aquecimento, cota e disjuntor → renderiza HTML e texto com cabeçalhos de descadastro → SES → eventos via SNS → atualiza `sends`, `suppressions` e contadores → disjuntor.
+campanha → materializa `sends` → lotes a cada 5 minutos → antes de **cada** envio confere consentimento, supressão, descadastro, aquecimento, cota e disjuntor → renderiza HTML e texto com cabeçalhos de descadastro → SES → eventos via SNS → atualiza `sends`, `suppressions` e contadores → disjuntor.
 
 ## Rotas públicas
 Descadastro, preferências, confirmação, formulário, clique e abertura. Usam token assinado e não sequencial, sem dados pessoais na URL, com limite de requisições. O redirecionamento de clique só aceita destinos presentes na mensagem enviada.

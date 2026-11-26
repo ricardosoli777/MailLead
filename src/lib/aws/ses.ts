@@ -67,6 +67,9 @@ export type SesSendInput = {
 	html?: string;
 	text?: string;
 	headers?: Record<string, string>;
+	replyTo?: string;
+	/** SES configuration set; decides which events are published for this message. */
+	configurationSet?: string;
 	attachments?: { filename: string; type: string; content: ArrayBuffer; disposition: "attachment" | "inline"; contentId?: string | null }[];
 };
 
@@ -84,6 +87,8 @@ export async function sendSesEmail(config: AwsConfig, input: SesSendInput): Prom
 		method: "POST",
 		json: {
 			FromEmailAddress: input.from,
+			...(input.replyTo ? { ReplyToAddresses: [input.replyTo] } : {}),
+			...(input.configurationSet ? { ConfigurationSetName: input.configurationSet } : {}),
 			Destination: { ToAddresses: input.to, ...(input.cc?.length ? { CcAddresses: input.cc } : {}), ...(input.bcc?.length ? { BccAddresses: input.bcc } : {}) },
 			Content: {
 				Simple: {

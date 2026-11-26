@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { ContactManager } from "@/components/marketing/contact-manager";
+import { SendingPanel } from "@/components/marketing/sending-panel";
 import { TemplateManager } from "@/components/marketing/template-manager";
 import { Button } from "@/components/ui/button";
 
-const TABS = [{ key: "templates", label: "Modelos" }, { key: "contacts", label: "Contatos" }] as const;
+const TABS = [{ key: "templates", label: "Modelos" }, { key: "contacts", label: "Contatos" }, { key: "sending", label: "Envio" }] as const;
 
 export default function MarketingPage() {
 	const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("templates");
@@ -16,7 +17,7 @@ export default function MarketingPage() {
 					<Button key={item.key} type="button" size="sm" variant={tab === item.key ? "default" : "outline"} aria-pressed={tab === item.key} onClick={() => setTab(item.key)}>{item.label}</Button>
 				))}
 			</div>
-			{tab === "templates" ? <TemplateManager /> : <ContactManager />}
+			{tab === "templates" ? <TemplateManager /> : tab === "contacts" ? <ContactManager /> : <SendingPanel />}
 		</div>
 	);
 }

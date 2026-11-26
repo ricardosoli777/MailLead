@@ -47,11 +47,13 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 **Estado em 2026-11-26:** publicada e testada localmente (`tests/marketing-contacts.test.mjs`). U2 (cabeçalhos no e-mail recebido) só é conferido com o motor de envio da onda 3, que deve usar `renderMarketingEmail` e `canReceive`.
 
 ### Onda 3 — Motor de envio e proteção (U5, R1–R5, R10, K2)
-- [ ] Fila, ritmo, cota, aquecimento, eventos SNS, disjuntor.
-- [ ] Testar com o simulador do SES (`success@`, `bounce@`, `complaint@simulator.amazonses.com`).
-- [ ] Teste de carga sem envio real.
+- [x] Lotes, ritmo, cota, aquecimento, eventos SNS, disjuntor (ver [envio.md](envio.md)).
+- [ ] Testar com o simulador do SES (`success@`, `bounce@`, `complaint@simulator.amazonses.com`). Depende da chave da AWS cadastrada.
+- [x] Teste de carga sem envio real (2.000 destinatários em banco em memória; falta medir no D1 real).
 
 **Sai quando:** o disjuntor pausa um envio simulado e uma repetição de fila não duplica.
+
+**Estado em 2026-11-26:** construída e testada localmente (`tests/marketing-sending.test.mjs`), ainda não publicada. A tela de campanhas é a onda 4.
 
 ### Onda 4 — Campanhas e relatórios (K1, K3, R7–R9)
 - [ ] Criar, revisar, agendar, pausar; relatórios.
