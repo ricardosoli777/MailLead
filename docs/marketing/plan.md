@@ -66,14 +66,18 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 ### Onda 5 — Captura e integrações (R6, I1–I3)
 - [x] Formulários por lista, com editor de campos, código para colar e página pronta (I1).
 - [x] Confirmação dupla por padrão (R6), API com chave própria (I2) e webhook de entrada assinado (I3).
-- [ ] Iniciar fluxo a partir da entrada (parte do I3): depende da onda 6.
+- [x] Iniciar funil a partir da entrada (I3), com a onda 6.
 - [ ] Adaptadores para plataformas de venda: falta saber quais.
 
-**Estado em 2026-11-26:** construída e testada localmente (`tests/marketing-capture.test.mjs`), ainda não publicada. Ver [captura.md](captura.md).
+**Estado em 2026-11-26:** publicada e testada localmente (`tests/marketing-capture.test.mjs`). Ver [captura.md](captura.md).
 
 ### Onda 6 — Fluxos (F1–F6)
-- [ ] Editor visual com arrastar e soltar (pedido do dono em 2026-11-26; substitui "lista de passos primeiro"). Ver [research.md](research.md).
-- [ ] Execução dos passos, sobre o motor de envio da onda 3.
+- [x] Editor visual com arrastar e soltar, e por clique no celular e teclado (pedido do dono).
+- [x] Execução dos passos sobre o motor de envio da onda 3.
+- [x] Funis prontos, objetivo do funil e aba de Ajuda (pedidos do dono em 2026-11-26).
+- [ ] Testar um funil real em produção.
+
+**Estado em 2026-11-26:** publicada; testada localmente (`tests/marketing-flows.test.mjs` e arrastar no navegador). Ver [funis.md](funis.md).
 
 ### Onda 7 — WhatsApp (W1, W2)
 - [ ] Escolher o provedor; consentimento e saída próprios.

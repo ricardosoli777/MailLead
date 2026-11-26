@@ -5,7 +5,7 @@ import { parseDesign } from "./render";
 /** R7: how long without an open or a click makes someone inactive. */
 export const INACTIVE_MS = 180 * 24 * 60 * 60 * 1000;
 
-const PROVIDER_SQL = `CASE
+export const PROVIDER_SQL = `CASE
 	WHEN substr(c.email, instr(c.email, '@') + 1) IN ('gmail.com', 'googlemail.com') THEN 'gmail'
 	WHEN substr(c.email, instr(c.email, '@') + 1) LIKE 'outlook.%' OR substr(c.email, instr(c.email, '@') + 1) LIKE 'hotmail.%' OR substr(c.email, instr(c.email, '@') + 1) LIKE 'live.%' THEN 'outlook'
 	WHEN substr(c.email, instr(c.email, '@') + 1) LIKE 'yahoo.%' THEN 'yahoo'
@@ -89,6 +89,7 @@ export async function listCampaigns(db: D1Database): Promise<CampaignReport[]> {
 		FROM marketing_campaigns p
 		LEFT JOIN marketing_lists l ON l.id = p.list_id
 		LEFT JOIN marketing_sends s ON s.campaign_id = p.id
+		WHERE p.kind = 'campaign'
 		GROUP BY p.id ORDER BY p.created_at DESC LIMIT 100`).all<CampaignReport>();
 	return results;
 }

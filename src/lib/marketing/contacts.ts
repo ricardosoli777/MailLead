@@ -159,7 +159,7 @@ export async function importContacts(
 				.bind(newId("cns"), id, source, text, consentedAt, now, id, source, text, consentedAt));
 		}
 		if (options.listId) statements.push(db.prepare("INSERT OR IGNORE INTO marketing_list_members (list_id, contact_id, created_at) VALUES (?, ?, ?)").bind(options.listId, id, now));
-		for (const tag of options.tags ?? []) statements.push(db.prepare("INSERT OR IGNORE INTO marketing_contact_tags (contact_id, tag) VALUES (?, ?)").bind(id, tag));
+		for (const tag of options.tags ?? []) statements.push(db.prepare("INSERT OR IGNORE INTO marketing_contact_tags (contact_id, tag, created_at) VALUES (?, ?, ?)").bind(id, tag, now));
 	}
 	await runBatches(db, statements);
 	report.rejected.sort((a, b) => a.line - b.line);
@@ -170,8 +170,9 @@ export async function updateContact(db: D1Database, id: string, patch: { name?: 
 	const statements: D1PreparedStatement[] = [];
 	if (patch.name !== undefined) statements.push(db.prepare("UPDATE marketing_contacts SET name = ?, updated_at = ? WHERE id = ?").bind(patch.name, now, id));
 	if (patch.tags) {
-		statements.push(db.prepare("DELETE FROM marketing_contact_tags WHERE contact_id = ?").bind(id));
-		for (const tag of patch.tags) statements.push(db.prepare("INSERT OR IGNORE INTO marketing_contact_tags (contact_id, tag) VALUES (?, ?)").bind(id, tag));
+		// Only what was removed is deleted: a tag kept keeps the date it was given.
+		statements.push(db.prepare("DELETE FROM marketing_contact_tags WHERE contact_id = ? AND tag NOT IN (SELECT value FROM json_each(?))").bind(id, JSON.stringify(patch.tags)));
+		for (const tag of patch.tags) statements.push(db.prepare("INSERT OR IGNORE INTO marketing_contact_tags (contact_id, tag, created_at) VALUES (?, ?, ?)").bind(id, tag, now));
 	}
 	if (patch.listIds) {
 		const current = await db.prepare("SELECT list_id, unsubscribed_at FROM marketing_list_members WHERE contact_id = ?").bind(id).all<{ list_id: string; unsubscribed_at: number | null }>();
@@ -196,7 +197,7 @@ export async function eraseContact(db: D1Database, id: string, now = Date.now())
 	await db.batch([
 		db.prepare("DELETE FROM marketing_pending WHERE email = ?").bind(row.email),
 		db.prepare("INSERT OR IGNORE INTO marketing_suppressions (email_hash, reason, created_at) VALUES (?, 'erased', ?)").bind(row.email_hash, now),
-		...["marketing_consents", "marketing_events", "marketing_list_members", "marketing_contact_tags"].map((table) => db.prepare(`DELETE FROM ${table} WHERE contact_id = ?`).bind(id)),
+		...["marketing_consents", "marketing_events", "marketing_list_members", "marketing_contact_tags", "marketing_flow_runs"].map((table) => db.prepare(`DELETE FROM ${table} WHERE contact_id = ?`).bind(id)),
 		db.prepare("DELETE FROM marketing_contacts WHERE id = ?").bind(id),
 	]);
 	return true;

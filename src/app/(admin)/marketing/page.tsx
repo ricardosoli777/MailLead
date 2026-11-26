@@ -4,11 +4,13 @@ import { useState } from "react";
 import { CampaignManager } from "@/components/marketing/campaign-manager";
 import { CaptureManager } from "@/components/marketing/capture-manager";
 import { ContactManager } from "@/components/marketing/contact-manager";
+import { FlowManager } from "@/components/marketing/flow-manager";
+import { HelpPanel } from "@/components/marketing/help-panel";
 import { SendingPanel } from "@/components/marketing/sending-panel";
 import { TemplateManager } from "@/components/marketing/template-manager";
 import { Button } from "@/components/ui/button";
 
-const TABS = [{ key: "templates", label: "Modelos" }, { key: "contacts", label: "Contatos" }, { key: "capture", label: "Captura" }, { key: "campaigns", label: "Campanhas" }, { key: "sending", label: "Envio" }] as const;
+const TABS = [{ key: "templates", label: "Modelos" }, { key: "contacts", label: "Contatos" }, { key: "capture", label: "Captura" }, { key: "campaigns", label: "Campanhas" }, { key: "flows", label: "Funis" }, { key: "sending", label: "Envio" }, { key: "help", label: "Ajuda" }] as const;
 
 export default function MarketingPage() {
 	const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("templates");
@@ -19,7 +21,7 @@ export default function MarketingPage() {
 	};
 	return (
 		<div className="space-y-6">
-			<div className="flex gap-2">
+			<div className="flex flex-wrap gap-2">
 				{TABS.map((item) => (
 					<Button key={item.key} type="button" size="sm" variant={tab === item.key ? "default" : "outline"} aria-pressed={tab === item.key} onClick={() => {
 						setFormId("");
@@ -27,7 +29,7 @@ export default function MarketingPage() {
 					}}>{item.label}</Button>
 				))}
 			</div>
-			{tab === "templates" ? <TemplateManager /> : tab === "contacts" ? <ContactManager onFormCreated={editForm} /> : tab === "capture" ? <CaptureManager editId={formId} onEdit={setFormId} /> : tab === "campaigns" ? <CampaignManager /> : <SendingPanel />}
+			{tab === "templates" ? <TemplateManager /> : tab === "contacts" ? <ContactManager onFormCreated={editForm} /> : tab === "capture" ? <CaptureManager editId={formId} onEdit={setFormId} /> : tab === "campaigns" ? <CampaignManager /> : tab === "flows" ? <FlowManager /> : tab === "help" ? <HelpPanel /> : <SendingPanel />}
 		</div>
 	);
 }

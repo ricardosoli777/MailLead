@@ -63,7 +63,7 @@ async function takeLease(db: D1Database, now: number): Promise<boolean> {
 	return taken.meta.changes > 0;
 }
 
-type Pending = { id: string; campaign_id: string; contact_id: string; provider: Provider; list_id: string; subject: string; design: string; email: string; name: string; fields: string };
+type Pending = { kind: string; id: string; campaign_id: string; contact_id: string; provider: Provider; list_id: string; subject: string; design: string; email: string; name: string; fields: string };
 
 const errorInfo = (error: unknown) => {
 	const value = error as { status?: number; code?: string; message?: string };
@@ -80,7 +80,7 @@ export async function runEngine(db: D1Database, deps: EngineDeps, batchSize = BA
 	await startDueCampaigns(db, now());
 	// Erased people leave rows that nothing would ever pick up.
 	await db.prepare("UPDATE marketing_sends SET status = 'skipped', error = 'contato apagado' WHERE status = 'pending' AND NOT EXISTS (SELECT 1 FROM marketing_contacts c WHERE c.id = marketing_sends.contact_id)").run();
-	await db.prepare("UPDATE marketing_campaigns SET status = 'done' WHERE status = 'running' AND NOT EXISTS (SELECT 1 FROM marketing_sends s WHERE s.campaign_id = marketing_campaigns.id AND s.status IN ('pending', 'sending'))").run();
+	await db.prepare("UPDATE marketing_campaigns SET status = 'done' WHERE status = 'running' AND kind = 'campaign' AND NOT EXISTS (SELECT 1 FROM marketing_sends s WHERE s.campaign_id = marketing_campaigns.id AND s.status IN ('pending', 'sending'))").run();
 	if (!(await db.prepare("SELECT 1 AS ok FROM marketing_sends s JOIN marketing_campaigns p ON p.id = s.campaign_id WHERE s.status = 'pending' AND p.status = 'running' LIMIT 1").first())) return result;
 
 	const settings = await readSetting<SenderSettings>(db, "sender");
@@ -107,7 +107,7 @@ export async function runEngine(db: D1Database, deps: EngineDeps, batchSize = BA
 		const pending: Pending[] = [];
 		// One query per provider so a full Gmail hour does not hold back everyone else.
 		for (const provider of providers) {
-			const { results } = await db.prepare(`SELECT s.id, s.campaign_id, s.contact_id, s.provider, p.list_id, p.subject, p.design, c.email, c.name, c.fields
+			const { results } = await db.prepare(`SELECT s.id, s.campaign_id, s.contact_id, s.provider, p.kind, p.list_id, p.subject, p.design, c.email, c.name, c.fields
 				FROM marketing_sends s JOIN marketing_campaigns p ON p.id = s.campaign_id JOIN marketing_contacts c ON c.id = s.contact_id
 				WHERE s.status = 'pending' AND p.status = 'running' AND s.provider = ? ORDER BY p.created_at, s.id LIMIT ?`)
 				.bind(provider, Math.min(room[provider], allowance)).all<Pending>();
@@ -136,8 +136,9 @@ export async function runEngine(db: D1Database, deps: EngineDeps, batchSize = BA
 				continue;
 			}
 
-			// R8: nobody gets more than the chosen number of campaigns in seven days.
-			const weeklyLimit = settings.weeklyLimit ?? DEFAULT_WEEKLY_LIMIT;
+			// R8: nobody gets more than the chosen number of campaigns in seven days. Funnel steps are a
+			// sequence the person was meant to receive in full, so the limit does not drop them.
+			const weeklyLimit = item.kind === "flow" ? 0 : (settings.weeklyLimit ?? DEFAULT_WEEKLY_LIMIT);
 			if (weeklyLimit > 0) {
 				const recent = await db.prepare("SELECT COUNT(*) AS n FROM marketing_sends WHERE contact_id = ? AND sent_at > ?").bind(item.contact_id, now() - WEEK_MS).first<{ n: number }>();
 				if (recent!.n >= weeklyLimit) {

@@ -4,6 +4,7 @@ import { sendSesEmail } from "@/lib/aws/ses";
 import { sendSystemEmail } from "@/lib/email/system-mail";
 import { confirmationMessage } from "./capture-page";
 import { checkBreaker, dropSetting, readSetting, runEngine, writeSetting } from "./engine";
+import { runFlows } from "./flows";
 import type { SenderSettings } from "./sending-types";
 import { formatFrom } from "./sending-utils";
 import { CONFIGURATION_SET, checkSender, getQuota } from "./ses-marketing";
@@ -13,7 +14,9 @@ const CHECK_TTL_MS = 60 * 60 * 1000;
 export async function runMarketingSending(env: CloudflareEnv): Promise<void> {
 	const db = env.MARKETING_DB;
 	if (!db) return;
-	if (!(await db.prepare("SELECT 1 AS ok FROM marketing_campaigns WHERE status = 'running' OR (status = 'scheduled' AND (scheduled_at IS NULL OR scheduled_at <= ?)) LIMIT 1").bind(Date.now()).first())) return;
+	// Funnels first, so what they queue can leave in this same pass.
+	await runFlows(db).catch((error) => console.error("Marketing funnels failed", error));
+	if (!(await db.prepare("SELECT 1 AS ok FROM marketing_sends s JOIN marketing_campaigns p ON p.id = s.campaign_id WHERE s.status = 'pending' AND p.status = 'running' UNION ALL SELECT 1 FROM marketing_campaigns WHERE kind = 'campaign' AND (status = 'running' OR (status = 'scheduled' AND (scheduled_at IS NULL OR scheduled_at <= ?))) LIMIT 1").bind(Date.now()).first())) return;
 	const config = await getAwsConfig(env);
 	if (!config) return;
 	const result = await runEngine(db, {
