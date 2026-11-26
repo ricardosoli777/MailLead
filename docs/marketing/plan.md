@@ -62,8 +62,9 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 ### Onda 5 — Captura e integrações (R6, I1–I3)
 - [ ] Formulários, confirmação dupla, API e webhook.
 
-### Onda 6 — Fluxos (F1–F3)
-- [ ] Primeiro em lista de passos; editor visual depois.
+### Onda 6 — Fluxos (F1–F6)
+- [ ] Editor visual com arrastar e soltar (pedido do dono em 2026-11-26; substitui "lista de passos primeiro"). Ver [research.md](research.md).
+- [ ] Execução dos passos, sobre o motor de envio da onda 3.
 
 ### Onda 7 — WhatsApp (W1, W2)
 - [ ] Escolher o provedor; consentimento e saída próprios.

@@ -89,6 +89,9 @@ Os limites de R5 são propostos abaixo das faixas de alerta da AWS (cerca de 5% 
 - F1 Gatilhos: entrou na lista, recebeu etiqueta, webhook.
 - F2 Passos: enviar, esperar, condição (clicou/abriu), etiquetar, sair.
 - F3 Sair do fluxo imediatamente ao se descadastrar.
+- F4 Montar o funil arrastando blocos para o quadro, com alternativa por clique no celular e no teclado (pedido do dono, 2026-11-26).
+- F5 Reordenar e remover passos; condição mostra os caminhos "Sim" e "Não".
+- F6 Rascunho pode estar incompleto; ativar só sem erros. Ver [research.md](research.md).
 - W1 Passo de WhatsApp com consentimento próprio, separado do e-mail.
 - W2 Resposta "sair" bloqueia novos envios.
 
