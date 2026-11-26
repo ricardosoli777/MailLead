@@ -36,7 +36,7 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 
 **Sai quando:** os modelos são conferidos no Gmail, no Outlook e no celular.
 
-**Estado em 2026-11-26:** construída e testada localmente, ainda não publicada; falta conferir no Gmail, Outlook e celular.
+**Estado em 2026-11-26:** publicada; falta conferir no Gmail, Outlook e celular.
 
 ### Onda 2 — Contatos, consentimento e descadastro (C1–C6, U1–U4, U6, U7)
 - [x] Contatos, listas, etiquetas, consentimento, importação.
