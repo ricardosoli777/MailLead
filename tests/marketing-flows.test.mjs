@@ -55,7 +55,7 @@ async function setup(steps, { triggerTag = "", goalTag = "" } = {}) {
 	db.sqlite.prepare("INSERT INTO marketing_templates (id, name, subject, design, created_at, updated_at) VALUES ('tpl', 'Boas-vindas', 'Oi', ?, 0, 0)").run(JSON.stringify(design));
 	const list = await store.createMailingList(db, "Clientes");
 	await engine.writeSetting(db, "sender", settings);
-	const id = await flows.createFlow(db, { name: "Funil", listId: list.id, triggerTag, goalTag, steps }, NOW);
+	const id = await flows.createFlow(db, { name: "Funil", listId: list.id, triggerTag, goalTag, graph: tree.fromTree(steps) }, NOW);
 	const join_ = (address, now, extra = {}) => store.importContacts(db, [{ line: 1, email: address, name: "Ana", fields: {} }], { listId: list.id, consent: { source: "teste", text: "aceito", consentedAt: now }, origin: "teste", now, ...extra });
 	const sent = [];
 	const deps = (now) => ({
@@ -178,7 +178,7 @@ test("a paused funnel holds its people and its queued mail", async () => {
 	await flows.activateFlow(db, id, NOW);
 	await enter("ana@gmail.com", NOW);
 	await flows.runFlows(db, NOW);
-	assert.equal(await flows.saveFlow(db, id, { name: "x", listId: "y", triggerTag: "", steps: [] }), false, "an active funnel is not edited");
+	assert.equal(await flows.saveFlow(db, id, { name: "x", listId: "y", triggerTag: "", graph: tree.emptyGraph() }), false, "an active funnel is not edited");
 	assert.equal(await flows.pauseFlow(db, id), true);
 	await tick(NOW + HOUR);
 	assert.equal(sent.length, 0);
@@ -195,7 +195,7 @@ test("removing a step while paused ends who was waiting on it without sending", 
 	await enter("ana@gmail.com", NOW);
 	await flows.runFlows(db, NOW);
 	await flows.pauseFlow(db, id);
-	await flows.saveFlow(db, id, { name: "Funil", listId: list.id, triggerTag: "", steps: [tag("tag01", "x")] });
+	await flows.saveFlow(db, id, { name: "Funil", listId: list.id, triggerTag: "", graph: tree.fromTree([tag("tag01", "x")]) });
 	await flows.activateFlow(db, id, NOW + HOUR);
 	await tick(NOW + HOUR);
 	assert.equal(sent.length, 0);
@@ -206,13 +206,11 @@ test("removing a step while paused ends who was waiting on it without sending", 
 
 test("a draft may be incomplete; activation refuses it with the reason (F6)", async () => {
 	const { db, id } = await setup([{ id: "mail1", type: "email", templateId: "", subject: "" }]);
-	assert.match(await flows.activateFlow(db, id, NOW), /modelo/);
+	assert.match(await flows.activateFlow(db, id, NOW), /conteúdo/);
 	const empty = await setup([]);
 	assert.match(await flows.activateFlow(empty.db, empty.id, NOW), /passo/);
 	const gone = await setup([{ id: "mail1", type: "email", templateId: "apagado", subject: "" }]);
 	assert.match(await flows.activateFlow(gone.db, gone.id, NOW), /apagado/);
-	const errors = tree.stepErrors([{ id: "cond1", type: "condition", test: "opened", tag: "", yes: [wait("wait1", 0)], no: [] }, tag("tag01", "")]);
-	assert.deepEqual(Object.keys(errors).sort(), ["cond1", "tag01", "wait1"]);
 });
 
 test("reaching the goal ends the passage and drops what was queued", async () => {
@@ -232,34 +230,85 @@ test("reaching the goal ends the passage and drops what was queued", async () =>
 	assert.equal((await flows.listFlows(db))[0].counts.goal, 1);
 });
 
-test("every ready-made funnel is a valid draft that only lacks templates", () => {
+test("every ready-made funnel is a connected drawing that only lacks content", () => {
 	for (const recipe of tree.RECIPES) {
-		const steps = tree.recipeSteps(recipe.id);
-		assert.deepEqual(tree.parseSteps(steps).steps, steps);
-		assert.ok(Object.values(tree.stepErrors(steps)).every((problem) => problem === "Escolha um modelo."), recipe.id);
+		const graph = tree.recipeGraph(recipe.id);
+		assert.deepEqual(tree.parseGraph(graph).graph, graph, recipe.id);
+		const problems = Object.values(tree.graphErrors(graph));
+		if (!graph.nodes.length) assert.deepEqual(problems, ["Ligue o Início ao primeiro passo."]);
+		else assert.ok(problems.every((problem) => problem.startsWith("Falta o conteúdo")), `${recipe.id}: ${problems}`);
 	}
 });
 
-test("the tree: insert, move, remove, limits and untrusted input (F4, F5)", () => {
-	const condition = { id: "cond1", type: "condition", test: "tag", tag: "a", yes: [], no: [] };
-	let steps = [email("mail1"), condition, wait("wait1")];
-	const ids = (list) => list.map((step) => step.id).join(",");
-	steps = tree.moveStep(steps, "mail1", { parent: "cond1", branch: "yes", index: 0 });
-	assert.equal(ids(steps), "cond1,wait1");
-	assert.equal(ids(steps[0].yes), "mail1");
-	assert.equal(tree.moveStep(steps, "cond1", { parent: "cond1", branch: "no", index: 0 }), steps, "not inside itself");
-	assert.equal(ids(tree.moveStep(steps, "cond1", { parent: null, branch: "yes", index: 2 })), "wait1,cond1", "moving down");
-	assert.equal(ids(tree.removeStep(steps, "mail1")[0].yes), "");
-	const nodes = tree.successors(steps);
-	assert.equal(nodes.get("mail1").next, "wait1", "after a side the funnel continues below the condition");
-	assert.equal(nodes.get("cond1").no, "wait1");
+const box = (step, x = 0, y = 0) => ({ ...step, x, y });
+const line = (from, to, branch = "") => ({ from, to, branch });
+const mail = (id) => ({ id, type: "email", name: "", templateId: "tpl", subject: "" });
+const check = (id, test_ = "clicked") => ({ id, type: "condition", test: test_, tag: "" });
+const graphOf = (nodes, edges) => ({ start: { x: 0, y: 0 }, nodes: nodes.map((node) => box(node)), edges });
 
-	assert.ok(tree.parseSteps([{ id: "x", type: "email" }]).error);
-	assert.ok(tree.parseSteps([email("same1"), email("same1")]).error);
-	assert.ok(tree.parseSteps([{ id: "abcd1", type: "toString" }]).error);
-	assert.ok(tree.parseSteps(Array.from({ length: tree.MAX_STEPS + 1 }, (_, index) => email(`mail${index}x`))).error);
-	let deep = [];
-	for (let level = 0; level <= tree.MAX_DEPTH; level++) deep = [{ id: `deep${level}`, type: "condition", test: "tag", tag: "a", yes: deep, no: [] }];
-	assert.ok(tree.parseSteps(deep).error);
-	assert.deepEqual(tree.parseSteps([{ ...email("mail1"), extra: 1 }]).steps, [email("mail1")]);
+test("the drawing is checked: loose boxes, open paths, lines going back, e-mail before a click test (F6)", () => {
+	const errors = (nodes, edges) => tree.graphErrors(graphOf(nodes, edges));
+	assert.match(errors([tag("tag01", "x")], []).start, /Início/);
+	assert.match(errors([tag("tag01", "x")], []).tag01, /solta/);
+	assert.match(errors([mail("mail1"), check("cond1")], [line("start", "mail1"), line("mail1", "cond1"), line("cond1", "mail1", "yes")]).cond1, /volta|dois/);
+	assert.match(errors([tag("tag01", "a"), tag("tag02", "b")], [line("start", "tag01"), line("tag01", "tag02"), line("tag02", "tag01")]).tag02, /volta/);
+	const open = errors([mail("mail1"), check("cond1"), tag("tag01", "x")], [line("start", "mail1"), line("mail1", "cond1"), line("cond1", "tag01", "yes")]);
+	assert.match(open.cond1, /Sim e Não/);
+	// One path reaches the condition without passing through an e-mail.
+	const early = errors(
+		[{ ...check("cond0", "tag"), tag: "a" }, mail("mail1"), check("cond1"), tag("tag01", "x")],
+		[line("start", "cond0"), line("cond0", "mail1", "yes"), line("cond0", "cond1", "no"), line("mail1", "cond1"), line("cond1", "tag01", "yes"), line("cond1", "tag01", "no")],
+	);
+	assert.match(early.cond1, /e-mail antes/);
+	assert.deepEqual(errors([mail("mail1"), check("cond1"), tag("tag01", "x")], [line("start", "mail1"), line("mail1", "cond1"), line("cond1", "tag01", "yes"), line("cond1", "tag01", "no")]), {});
+});
+
+test("drawing: connect, insert in a line, remove and arrange (F4, F5)", () => {
+	let graph = graphOf([mail("mail1"), tag("tag01", "x")], [line("start", "mail1"), line("mail1", "tag01")]);
+	assert.equal(tree.connect(graph, "tag01", "", "mail1"), graph, "not back up the path");
+	assert.equal(tree.connect(graph, "tag01", "", "start"), graph);
+	assert.equal(tree.connect(graph, "mail1", "yes", "tag01"), graph, "only a condition has two sides");
+	assert.deepEqual(tree.openOutput(graph), { from: "tag01", branch: "" });
+
+	graph = tree.insertOnEdge(graph, { from: "mail1", branch: "" }, tree.createStep("wait", "wait1"));
+	assert.deepEqual([tree.successors(graph).get("mail1").next, tree.successors(graph).get("wait1").next], ["wait1", "tag01"]);
+	assert.equal(tree.insertOnEdge(graph, { from: "mail1", branch: "" }, tree.createStep("exit")), graph);
+	assert.equal(tree.successors(tree.removeNodes(graph, ["wait1"])).get("mail1").next, "tag01", "the path stays joined");
+
+	const branched = tree.layout(graphOf(
+		[mail("mail1"), check("cond1"), tag("yes01", "s"), tag("no001", "n"), tag("loose", "z")],
+		[line("start", "mail1"), line("mail1", "cond1"), line("cond1", "no001", "no"), line("cond1", "yes01", "yes")],
+	));
+	const at = Object.fromEntries(branched.nodes.map((node) => [node.id, node]));
+	assert.ok(at.mail1.y < at.cond1.y && at.cond1.y < at.yes01.y);
+	assert.equal(at.yes01.y, at.no001.y);
+	assert.ok(at.yes01.x < at.no001.x, "yes is on the left");
+	assert.ok(at.loose.x > at.no001.x - 1, "a loose box goes to the side");
+});
+
+test("untrusted drawings are rebuilt or refused", () => {
+	const nodes = [box(mail("mail1")), box(tag("tag01", "X "))];
+	const { graph } = tree.parseGraph({ nodes: [{ ...nodes[0], extra: 1 }, nodes[1]], edges: [line("start", "mail1"), line("start", "tag01"), line("mail1", "none1"), line("mail1", "start"), line("mail1", "tag01", "yes")] });
+	assert.deepEqual(graph.nodes[0], box(mail("mail1")));
+	assert.equal(graph.nodes[1].tag, "x");
+	assert.deepEqual(graph.edges, [line("start", "mail1")]);
+	assert.ok(tree.parseGraph({ nodes: [{ id: "x", type: "email" }] }).error);
+	assert.ok(tree.parseGraph({ nodes: [mail("same1"), mail("same1")] }).error);
+	assert.ok(tree.parseGraph({ nodes: [{ id: "abcd1", type: "toString" }] }).error);
+	assert.ok(tree.parseGraph({ nodes: [mail("start")] }).error);
+	assert.ok(tree.parseGraph({ nodes: Array.from({ length: tree.MAX_STEPS + 1 }, (_, index) => mail(`mail${index}x`)) }).error);
+});
+
+test("a funnel saved by the first builder keeps working", async () => {
+	const { db, id, join: enter, tick, run, tags } = await setup([]);
+	const old = [email("mail1"), { id: "cond1", type: "condition", test: "clicked", tag: "", yes: [], no: [tag("no001", "nao-clicou")] }];
+	db.sqlite.prepare("UPDATE marketing_flows SET steps = ? WHERE id = ?").run(JSON.stringify(old), id);
+	const [flow] = await flows.listFlows(db);
+	assert.deepEqual(tree.graphErrors(flow.graph), {});
+	assert.equal(await flows.activateFlow(db, id, NOW), null);
+	await enter("ana@gmail.com", NOW);
+	await tick(NOW);
+	await tick(NOW + HOUR);
+	assert.deepEqual(tags(), ["nao-clicou"]);
+	assert.deepEqual(run(), ["done:null"]);
 });

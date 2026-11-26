@@ -4,7 +4,11 @@
 
 ## Como funciona
 - Cada funil tem uma lista. Começa quando alguém **entra na lista** ou quando alguém da lista **recebe uma etiqueta**. Formulário, API e webhook disparam o funil ao colocar a pessoa na lista ou na etiqueta (I3).
-- Passos: enviar e-mail, esperar, condição (clicou, abriu, tem etiqueta), etiqueta (colocar ou tirar) e sair. Depois de um dos lados da condição, o funil continua abaixo dela.
+- O funil é um fluxograma em tela cheia: caixas ligadas por linhas, de cima para baixo. Caixas: enviar e-mail, esperar, condição (clicou, abriu, tem etiqueta; saídas Sim e Não), etiqueta (colocar ou tirar) e fim. Uma caixa sem linha de saída também encerra.
+- Dá para desenhar tudo e escrever depois: a caixa de e-mail aceita rascunho sem conteúdo, e o conteúdo é escrito de dentro dela (vira um modelo).
+- Para ativar: nenhuma caixa solta, condição com os dois lados ligados, nenhuma linha voltando para trás, todo e-mail com conteúdo.
+- Armazenamento: `marketing_flows.steps` guarda `{start, nodes, edges}`. Funis do primeiro construtor (lista) são convertidos na leitura (`readGraph`).
+- A tela usa `@xyflow/react` (MIT) com o selo oculto (`proOptions.hideAttribution`); os autores pedem assinatura Pro para ocultar.
 - **Objetivo** (opcional): quem recebe a etiqueta escolhida sai, e o que estava na fila para essa pessoa não é enviado.
 - Só entra quem chegar depois da primeira ativação. Cada pessoa passa uma vez por funil.
 - Roda no agendamento de 5 minutos, até 100 pessoas por passagem (cerca de 28 mil avanços por dia). Antes dos envios.

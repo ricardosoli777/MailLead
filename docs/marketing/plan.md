@@ -75,6 +75,7 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 - [x] Editor visual com arrastar e soltar, e por clique no celular e teclado (pedido do dono).
 - [x] Execução dos passos sobre o motor de envio da onda 3.
 - [x] Funis prontos, objetivo do funil e aba de Ajuda (pedidos do dono em 2026-11-26).
+- [x] Editor refeito como fluxograma em tela cheia, com caixa por etapa e conteúdo escrito depois (o dono não gostou da lista empilhada).
 - [ ] Testar um funil real em produção.
 
 **Estado em 2026-11-26:** publicada; testada localmente (`tests/marketing-flows.test.mjs` e arrastar no navegador). Ver [funis.md](funis.md).

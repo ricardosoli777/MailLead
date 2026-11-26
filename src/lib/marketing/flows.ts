@@ -4,8 +4,8 @@
  */
 import { newId } from "@/lib/ids";
 import { PROVIDER_SQL } from "./campaigns";
-import type { Flow, FlowDraft, FlowStatus, FlowStep } from "./flows-types";
-import { parseSteps, stepErrors, successors, walk, type Node } from "./flows-utils";
+import type { Flow, FlowDraft, FlowStatus } from "./flows-types";
+import { emptyGraph, firstStep, graphErrors, parseGraph, readGraph, successors, type Node } from "./flows-utils";
 import { parseDesign } from "./render";
 
 const RUNS_PER_TICK = 100;
@@ -22,28 +22,28 @@ const getRow = (db: D1Database, id: string) => db.prepare("SELECT * FROM marketi
 export async function createFlow(db: D1Database, input: FlowDraft, now = Date.now()): Promise<string> {
 	const id = newId("flw");
 	await db.prepare("INSERT INTO marketing_flows (id, name, list_id, trigger_tag, goal_tag, steps, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-		.bind(id, input.name, input.listId, input.triggerTag, input.goalTag ?? "", JSON.stringify(input.steps), now).run();
+		.bind(id, input.name, input.listId, input.triggerTag, input.goalTag ?? "", JSON.stringify(input.graph), now).run();
 	return id;
 }
 
 /** An active funnel is paused before it is changed, so nobody walks a half-edited path. */
 export async function saveFlow(db: D1Database, id: string, input: FlowDraft): Promise<boolean> {
 	return (await db.prepare("UPDATE marketing_flows SET name = ?, list_id = ?, trigger_tag = ?, goal_tag = ?, steps = ? WHERE id = ? AND status <> 'active'")
-		.bind(input.name, input.listId, input.triggerTag, input.goalTag ?? "", JSON.stringify(input.steps), id).run()).meta.changes > 0;
+		.bind(input.name, input.listId, input.triggerTag, input.goalTag ?? "", JSON.stringify(input.graph), id).run()).meta.changes > 0;
 }
 
 export function readFlowInput(input: unknown): FlowDraft | { error: string } {
-	const value = (input ?? {}) as { name?: unknown; listId?: unknown; triggerTag?: unknown; goalTag?: unknown; steps?: unknown };
+	const value = (input ?? {}) as { name?: unknown; listId?: unknown; triggerTag?: unknown; goalTag?: unknown; graph?: unknown };
 	const name = typeof value.name === "string" ? value.name.trim().slice(0, 100) : "";
 	if (!name) return { error: "Dê um nome ao funil." };
-	const parsed = parseSteps(value.steps ?? []);
+	const parsed = parseGraph(value.graph ?? emptyGraph());
 	if ("error" in parsed) return parsed;
 	return {
 		name,
 		listId: typeof value.listId === "string" ? value.listId.slice(0, 80) : "",
 		triggerTag: typeof value.triggerTag === "string" ? value.triggerTag.trim().toLowerCase().slice(0, 40) : "",
 		goalTag: typeof value.goalTag === "string" ? value.goalTag.trim().toLowerCase().slice(0, 40) : "",
-		steps: parsed.steps,
+		graph: parsed.graph,
 	};
 }
 
@@ -63,13 +63,13 @@ export async function activateFlow(db: D1Database, id: string, now = Date.now())
 	if (!flow) return "Funil não encontrado.";
 	const list = await db.prepare("SELECT 1 AS ok FROM marketing_lists WHERE id = ?").bind(flow.list_id).first();
 	if (!list) return "Escolha a lista que inicia o funil.";
-	const steps = JSON.parse(flow.steps) as FlowStep[];
-	if (!steps.length) return "Adicione pelo menos um passo.";
-	const [problem] = Object.values(stepErrors(steps));
+	const graph = readGraph(flow.steps);
+	if (!graph.nodes.length) return "Adicione pelo menos um passo.";
+	const [problem] = Object.values(graphErrors(graph));
 	if (problem) return problem;
 
 	const mails: { id: string; subject: string; design: string }[] = [];
-	for (const step of walk(steps)) {
+	for (const step of graph.nodes) {
 		if (step.type !== "email") continue;
 		const template = await db.prepare("SELECT name, subject, design FROM marketing_templates WHERE id = ?").bind(step.templateId).first<{ name: string; subject: string; design: string }>();
 		if (!template) return "Um modelo usado no funil foi apagado.";
@@ -118,7 +118,7 @@ async function exitIneligible(db: D1Database): Promise<void> {
 
 /** F1: who joined the list, or got the tag, since the funnel was first activated. */
 async function enroll(db: D1Database, flow: Row, now: number): Promise<void> {
-	const first = (JSON.parse(flow.steps) as FlowStep[])[0]?.id;
+	const first = firstStep(readGraph(flow.steps));
 	if (!first) return;
 	const since = flow.trigger_tag
 		? "EXISTS (SELECT 1 FROM marketing_contact_tags t WHERE t.contact_id = c.id AND t.tag = ?5 AND t.created_at >= ?6)"
@@ -192,7 +192,7 @@ export async function runFlows(db: D1Database, now = Date.now(), limit = RUNS_PE
 	if (!flows.length) return;
 	for (const flow of flows) await enroll(db, flow, now);
 	await reachGoals(db);
-	const trees = new Map(flows.map((flow) => [flow.id, successors(JSON.parse(flow.steps) as FlowStep[])]));
+	const trees = new Map(flows.map((flow) => [flow.id, successors(readGraph(flow.steps))]));
 	const { results: runs } = await db.prepare(`SELECT r.flow_id, r.contact_id, r.step_id, r.wake_at, r.last_send_id FROM marketing_flow_runs r JOIN marketing_flows f ON f.id = r.flow_id
 		WHERE r.status = 'active' AND f.status = 'active' AND r.next_check_at <= ? ORDER BY r.next_check_at, r.created_at LIMIT ?`).bind(now, limit).all<Run>();
 	for (const run of runs) await advance(db, run, trees.get(run.flow_id)!, now);
@@ -207,11 +207,11 @@ export async function listFlows(db: D1Database): Promise<Flow[]> {
 			FROM marketing_sends s JOIN marketing_campaigns p ON p.id = s.campaign_id WHERE p.kind = 'flow' GROUP BY s.campaign_id`).all<{ campaign_id: string; sent: number; opened: number; clicked: number }>(),
 	]);
 	return flows.results.map((row) => {
-		const steps = JSON.parse(row.steps) as FlowStep[];
+		const graph = readGraph(row.steps);
 		const counts = { active: 0, done: 0, goal: 0, exited: 0 };
 		for (const item of runs.results) if (item.flow_id === row.id) counts[item.status] = item.n;
 		const stats: Flow["stats"] = {};
-		for (const step of walk(steps)) {
+		for (const step of graph.nodes) {
 			const mail = mails.results.find((item) => item.campaign_id === campaignId(row.id, step.id));
 			stats[step.id] = {
 				here: here.results.find((item) => item.flow_id === row.id && item.step_id === step.id)?.n ?? 0,
@@ -220,6 +220,6 @@ export async function listFlows(db: D1Database): Promise<Flow[]> {
 				clicked: mail?.clicked ?? 0,
 			};
 		}
-		return { id: row.id, name: row.name, listId: row.list_id, triggerTag: row.trigger_tag, goalTag: row.goal_tag, steps, status: row.status, counts, stats };
+		return { id: row.id, name: row.name, listId: row.list_id, triggerTag: row.trigger_tag, goalTag: row.goal_tag, graph, status: row.status, counts, stats };
 	});
 }

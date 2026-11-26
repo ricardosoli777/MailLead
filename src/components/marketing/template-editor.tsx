@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { renderHtml, renderText } from "@/lib/marketing/render";
-import type { Block, Design } from "@/lib/marketing/types";
+import type { Block, Design, Template } from "@/lib/marketing/types";
 import { marketingRequest } from "./marketing-request";
 import type { Draft } from "./template-manager";
 
@@ -61,7 +62,7 @@ function ImageField({ label, value, onChange, onError }: { label: string; value:
 	);
 }
 
-export function TemplateEditor({ initial, onClose }: { initial: Draft; onClose: () => void }) {
+export function TemplateEditor({ initial, onClose, onSaved, stickyBar }: { initial: Draft; onClose: () => void; onSaved?: (template: Template) => void; stickyBar?: boolean }) {
 	const user = useCurrentUser();
 	const [draft, setDraft] = useState<Draft>(initial);
 	const [testTo, setTestTo] = useState("");
@@ -69,6 +70,13 @@ export function TemplateEditor({ initial, onClose }: { initial: Draft; onClose: 
 	const [busy, setBusy] = useState(false);
 	const [view, setView] = useState<"desktop" | "mobile" | "text">("desktop");
 	const { design } = draft;
+	const content = ({ name, subject, design }: Draft) => JSON.stringify({ name, subject, design });
+	// A new message that was never saved counts as unsaved.
+	const saved = useRef(initial.id ? content(initial) : "");
+	const close = async () => {
+		if (content(draft) !== saved.current && !(await confirmDialog("Sair sem salvar este e-mail?"))) return;
+		onClose();
+	};
 
 	const setDesign = (patch: Partial<Design>) => setDraft((current) => ({ ...current, design: { ...current.design, ...patch } }));
 	const setBlock = (index: number, patch: Record<string, string>) =>
@@ -95,12 +103,14 @@ export function TemplateEditor({ initial, onClose }: { initial: Draft; onClose: 
 	}
 
 	const save = () => run(async () => {
-		const data = await marketingRequest<{ template: { id: string } }>(draft.id ? `/api/marketing/templates/${draft.id}` : "/api/marketing/templates", {
+		const data = await marketingRequest<{ template: Template }>(draft.id ? `/api/marketing/templates/${draft.id}` : "/api/marketing/templates", {
 			method: draft.id ? "PUT" : "POST",
 			headers: { "Content-Type": "application/json" },
 			body: body(),
 		});
 		setDraft((current) => ({ ...current, id: data.template.id }));
+		saved.current = content(draft);
+		onSaved?.(data.template);
 		return "Modelo salvo.";
 	});
 
@@ -113,8 +123,8 @@ export function TemplateEditor({ initial, onClose }: { initial: Draft; onClose: 
 
 	return (
 		<div className="space-y-6">
-			<div className="flex flex-wrap items-center justify-between gap-2">
-				<Button type="button" variant="outline" onClick={onClose}>← Voltar</Button>
+			<div className={`flex flex-wrap items-center justify-between gap-2 ${stickyBar ? "sticky top-0 z-10 bg-neutral-100 py-3" : ""}`}>
+				<Button type="button" variant="outline" onClick={() => void close()}>← Voltar</Button>
 				<Button type="button" disabled={busy} onClick={() => void save()}>Salvar modelo</Button>
 			</div>
 			{status && <p role="status" className={`text-sm ${status.error ? "text-red-600" : "text-green-700"}`}>{status.message}</p>}
