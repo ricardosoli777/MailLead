@@ -53,7 +53,7 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 
 **Sai quando:** o disjuntor pausa um envio simulado e uma repetição de fila não duplica.
 
-**Estado em 2026-11-26:** construída e testada localmente (`tests/marketing-sending.test.mjs`), ainda não publicada. A tela de campanhas é a onda 4.
+**Estado em 2026-11-26:** construída e testada localmente (`tests/marketing-sending.test.mjs`), publicada. A tela de campanhas é a onda 4.
 
 ### Onda 4 — Campanhas e relatórios (K1, K3, R7–R9)
 - [ ] Criar, revisar, agendar, pausar; relatórios.
