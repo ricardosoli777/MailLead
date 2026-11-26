@@ -93,6 +93,8 @@ export async function createMailingList(db: D1Database, name: string): Promise<M
 export async function deleteMailingList(db: D1Database, id: string) {
 	await db.batch([
 		db.prepare("DELETE FROM marketing_list_members WHERE list_id = ?").bind(id),
+		db.prepare("DELETE FROM marketing_forms WHERE list_id = ?").bind(id),
+		db.prepare("DELETE FROM marketing_hooks WHERE list_id = ?").bind(id),
 		db.prepare("DELETE FROM marketing_lists WHERE id = ?").bind(id),
 	]);
 }
@@ -144,7 +146,7 @@ export async function importContacts(
 		const id = found ?? newId("con");
 		if (found) {
 			report.updated++;
-			statements.push(db.prepare("UPDATE marketing_contacts SET name = CASE WHEN name = '' THEN ? ELSE name END, updated_at = ? WHERE id = ?").bind(row.name, now, id));
+			statements.push(db.prepare("UPDATE marketing_contacts SET name = CASE WHEN name = '' THEN ? ELSE name END, fields = json_patch(?, fields), updated_at = ? WHERE id = ?").bind(row.name, JSON.stringify(row.fields), now, id));
 		} else {
 			report.added++;
 			statements.push(db.prepare("INSERT INTO marketing_contacts (id, email, email_hash, name, fields, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, row.email, row.hash, row.name, JSON.stringify(row.fields), now, now));
@@ -189,9 +191,10 @@ export async function updateContact(db: D1Database, id: string, patch: { name?: 
 
 /** Deletes everything about a person except the hash that keeps the address from coming back (C6). */
 export async function eraseContact(db: D1Database, id: string, now = Date.now()): Promise<boolean> {
-	const row = await db.prepare("SELECT email_hash FROM marketing_contacts WHERE id = ?").bind(id).first<{ email_hash: string }>();
+	const row = await db.prepare("SELECT email, email_hash FROM marketing_contacts WHERE id = ?").bind(id).first<{ email: string; email_hash: string }>();
 	if (!row) return false;
 	await db.batch([
+		db.prepare("DELETE FROM marketing_pending WHERE email = ?").bind(row.email),
 		db.prepare("INSERT OR IGNORE INTO marketing_suppressions (email_hash, reason, created_at) VALUES (?, 'erased', ?)").bind(row.email_hash, now),
 		...["marketing_consents", "marketing_events", "marketing_list_members", "marketing_contact_tags"].map((table) => db.prepare(`DELETE FROM ${table} WHERE contact_id = ?`).bind(id)),
 		db.prepare("DELETE FROM marketing_contacts WHERE id = ?").bind(id),

@@ -42,7 +42,7 @@ function ConsentFields({ value, onChange }: { value: ConsentForm; onChange: (val
 	);
 }
 
-export function ContactManager() {
+export function ContactManager({ onFormCreated }: { onFormCreated: (formId: string) => void }) {
 	const [lists, setLists] = useState<MailingList[]>([]);
 	const [contacts, setContacts] = useState<ContactSummary[]>([]);
 	const [total, setTotal] = useState(0);
@@ -88,7 +88,8 @@ export function ContactManager() {
 	}
 
 	const createList = () => run(async () => {
-		await marketingRequest("/api/marketing/lists", json("POST", { name: listName }));
+		const { formId } = await marketingRequest<{ formId: string }>("/api/marketing/lists", json("POST", { name: listName }));
+		onFormCreated(formId);
 		setListName("");
 		return "Lista criada.";
 	});

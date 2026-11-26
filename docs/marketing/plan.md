@@ -64,7 +64,12 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 **Estado em 2026-11-26:** construída e testada localmente (`tests/marketing-sending.test.mjs`), publicada.
 
 ### Onda 5 — Captura e integrações (R6, I1–I3)
-- [ ] Formulários, confirmação dupla, API e webhook.
+- [x] Formulários por lista, com editor de campos, código para colar e página pronta (I1).
+- [x] Confirmação dupla por padrão (R6), API com chave própria (I2) e webhook de entrada assinado (I3).
+- [ ] Iniciar fluxo a partir da entrada (parte do I3): depende da onda 6.
+- [ ] Adaptadores para plataformas de venda: falta saber quais.
+
+**Estado em 2026-11-26:** construída e testada localmente (`tests/marketing-capture.test.mjs`), ainda não publicada. Ver [captura.md](captura.md).
 
 ### Onda 6 — Fluxos (F1–F6)
 - [ ] Editor visual com arrastar e soltar (pedido do dono em 2026-11-26; substitui "lista de passos primeiro"). Ver [research.md](research.md).

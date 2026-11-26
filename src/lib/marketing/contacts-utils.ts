@@ -31,6 +31,18 @@ export function normalizeTags(value: unknown): string[] {
 	return [...new Set(raw.filter((tag): tag is string => typeof tag === "string").map((tag) => tag.trim().toLowerCase().slice(0, 40)).filter(Boolean))].slice(0, 20);
 }
 
+/** Extra data about a person, from untrusted input. */
+export function cleanFields(input: unknown): Record<string, string> {
+	const fields: Record<string, string> = {};
+	if (!input || typeof input !== "object" || Array.isArray(input)) return fields;
+	for (const [name, raw] of Object.entries(input)) {
+		const key = name.trim().toLowerCase().slice(0, 60);
+		const value = typeof raw === "string" || typeof raw === "number" ? String(raw).trim().slice(0, 500) : "";
+		if (key && value && Object.keys(fields).length < 20) fields[key] = value;
+	}
+	return fields;
+}
+
 /** The origin, the text the person accepted and when. All three or no consent at all. */
 export function readConsent(input: unknown, now = Date.now()): Consent | null {
 	const value = (input ?? {}) as { source?: unknown; text?: unknown; date?: unknown };

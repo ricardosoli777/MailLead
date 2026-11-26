@@ -111,6 +111,10 @@ const EXEMPT = {
 	"setup/prepare/route.ts": "first-run setup, refuses a database that already has tables",
 	"seed/route.ts": "development seeding, refuses outside a fresh dev database",
 	"marketing/ses-events/route.ts": "SNS delivery: URL token, topic and Amazon signature are the credentials, no cookie is read",
+	"marketing/f/[id]/route.ts": "public capture form posted from external pages (honeypot, rate limit, Turnstile, double opt-in), no cookie is read",
+	"marketing/k/[token]/route.ts": "double opt-in confirmation: the single-use emailed token is the credential, no cookie is read",
+	"marketing/hooks/[id]/route.ts": "incoming webhook authenticated by an HMAC signature of the body, no cookie is read",
+	"marketing/v1/": "marketing API-key bearer surface (authenticateKey); browsers never attach the key",
 	"marketing/u/[token]/route.ts": "public unsubscribe (RFC 8058): the HMAC-signed token is the only credential, no cookie is read",
 };
 const exemptReason = (relative) => Object.entries(EXEMPT).find(([prefix]) => relative === prefix || (prefix.endsWith("/") && relative.startsWith(prefix)))?.[1];

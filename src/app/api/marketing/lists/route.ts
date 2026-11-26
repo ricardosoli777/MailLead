@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { DEFAULT_CONSENT, createForm } from "@/lib/marketing/capture";
 import { createMailingList, listMailingLists } from "@/lib/marketing/contacts";
 import { requireMarketing } from "@/lib/marketing/server";
 
@@ -16,5 +17,7 @@ export async function POST(request: Request) {
 	if (!name) return NextResponse.json({ error: "Dê um nome à lista." }, { status: 400 });
 	const list = await createMailingList(access.db, name);
 	if (!list) return NextResponse.json({ error: "Já existe uma lista com esse nome." }, { status: 409 });
-	return NextResponse.json({ list }, { status: 201 });
+	// Every new list comes with its sign-up form, ready to adjust.
+	const formId = await createForm(access.db, { name: list.name, listId: list.id, tags: [], consentText: DEFAULT_CONSENT });
+	return NextResponse.json({ list, formId }, { status: 201 });
 }

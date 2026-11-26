@@ -2,8 +2,10 @@
 import { getAwsConfig } from "@/lib/aws/config";
 import { sendSesEmail } from "@/lib/aws/ses";
 import { sendSystemEmail } from "@/lib/email/system-mail";
-import { dropSetting, readSetting, runEngine, writeSetting } from "./engine";
+import { confirmationMessage } from "./capture-page";
+import { checkBreaker, dropSetting, readSetting, runEngine, writeSetting } from "./engine";
 import type { SenderSettings } from "./sending-types";
+import { formatFrom } from "./sending-utils";
 import { CONFIGURATION_SET, checkSender, getQuota } from "./ses-marketing";
 
 const CHECK_TTL_MS = 60 * 60 * 1000;
@@ -16,15 +18,7 @@ export async function runMarketingSending(env: CloudflareEnv): Promise<void> {
 	if (!config) return;
 	const result = await runEngine(db, {
 		quota: () => getQuota(config),
-		preflight: async () => {
-			const passed = await readSetting<number>(db, "checks_passed_at");
-			if (passed && Date.now() - passed < CHECK_TTL_MS) return null;
-			const settings = (await readSetting<SenderSettings>(db, "sender"))!;
-			const failed = (await checkSender(env, db, settings)).find((check) => !check.ok);
-			if (failed) return `${failed.label}: ${failed.detail}`;
-			await writeSetting(db, "checks_passed_at", Date.now());
-			return null;
-		},
+		preflight: () => preflight(env, db),
 		send: async (message) => {
 			const { messageId } = await sendSesEmail(config, { ...message, to: [message.to], replyTo: message.replyTo || undefined, configurationSet: CONFIGURATION_SET });
 			// Events carry the bare SES id, without the Message-ID wrapping.
@@ -33,6 +27,28 @@ export async function runMarketingSending(env: CloudflareEnv): Promise<void> {
 	});
 	if (result.blocked) console.log("Marketing sending blocked", result.blocked);
 	await notifyBreaker(env, db);
+}
+
+/** The domain checks, remembered for an hour once everything passes. */
+async function preflight(env: CloudflareEnv, db: D1Database): Promise<string | null> {
+	const passed = await readSetting<number>(db, "checks_passed_at");
+	if (passed && Date.now() - passed < CHECK_TTL_MS) return null;
+	const settings = (await readSetting<SenderSettings>(db, "sender"))!;
+	const failed = (await checkSender(env, db, settings)).find((check) => !check.ok);
+	if (failed) return `${failed.label}: ${failed.detail}`;
+	await writeSetting(db, "checks_passed_at", Date.now());
+	return null;
+}
+
+/** The double opt-in message (R6). It leaves under the same protections as campaigns. */
+export async function sendConfirmationMail(env: CloudflareEnv, db: D1Database, to: string, formName: string, token: string): Promise<void> {
+	const settings = await readSetting<SenderSettings>(db, "sender");
+	const config = await getAwsConfig(env);
+	if (!settings || !config) throw new Error("O remetente de marketing não está configurado.");
+	const blocked = (await checkBreaker(db)) ?? (await preflight(env, db));
+	if (blocked) throw new Error(blocked);
+	const message = confirmationMessage(settings.fromName, formName, `${settings.origin}/api/marketing/k/${token}`);
+	await sendSesEmail(config, { ...message, from: formatFrom(settings.fromName, settings.fromEmail), to: [to], replyTo: settings.replyTo || undefined, configurationSet: CONFIGURATION_SET });
 }
 
 /** R5: the primary administrator is told once when the breaker opens. */
