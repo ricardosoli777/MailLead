@@ -30,7 +30,7 @@ const files = [{ filename: "Q3 <report>.pdf", size: 31_400_000, url: "https://ma
 
 test("the shared-files notice defaults to English and states the real link lifetime", () => {
 	const notice = sharedFileNotice(files, 30);
-	assert.equal(notice.intro, "Files shared through Mailflare (download links expire after 30 days):");
+	assert.equal(notice.intro, "Files shared through MailLead (download links expire after 30 days):");
 	assert.equal(notice.text, "Q3 <report>.pdf (31.4 MB): https://mail.example.com/api/shared-files/share_1?a=1&b=2");
 	assert.match(notice.html, /<li>Q3 &lt;report&gt;\.pdf \(31\.4 MB\): <a href="https:\/\/mail\.example\.com\/api\/shared-files\/share_1\?a=1&amp;b=2">Download file<\/a><\/li>/);
 	assert.match(sharedFileNotice(files, 7).intro, /expire after 7 days/);

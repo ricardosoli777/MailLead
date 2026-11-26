@@ -184,7 +184,7 @@ async function route(request: Request, env: CloudflareEnv): Promise<Response | n
 	const auth = await authenticateAppPasswordRequest(env, request, protocol);
 	if (auth === "insecure") return text(403, "HTTPS is required for calendar and contacts sync. Behind a reverse proxy, set TRUST_PROXY so its X-Forwarded-Proto is believed.");
 	if (auth === "throttled") return text(429, "Too many attempts", { "Retry-After": "60" });
-	if (!auth) return text(401, "Unauthorized", { "WWW-Authenticate": 'Basic realm="Mailflare", charset="UTF-8"' });
+	if (!auth) return text(401, "Unauthorized", { "WWW-Authenticate": 'Basic realm="MailLead", charset="UTF-8"' });
 	if (!(await withinKeyBudget(env, auth.keyId))) return text(503, "Too many requests", { "Retry-After": "30" });
 
 	if (request.method === "MKCALENDAR" || request.method === "MKCOL") return text(403, "Collections cannot be created");

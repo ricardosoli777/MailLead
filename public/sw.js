@@ -1,6 +1,6 @@
 // Bump OFFLINE_CACHE whenever public/offline.html changes: installed clients keep the cached copy until the cache name changes.
 const OFFLINE_CACHE_PREFIX = "mailflare-offline-";
-const OFFLINE_CACHE = `${OFFLINE_CACHE_PREFIX}v2`;
+const OFFLINE_CACHE = `${OFFLINE_CACHE_PREFIX}v3`;
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {

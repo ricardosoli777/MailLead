@@ -32,6 +32,6 @@ export async function GET(request: Request) {
 			}
 		}
 	}
-	const body = buildCalendarFeed(visible, { name: "Mailflare" }, overrides);
+	const body = buildCalendarFeed(visible, { name: "MailLead" }, overrides);
 	return new Response(body, { headers: { "Content-Type": "text/calendar; charset=utf-8", "Content-Disposition": 'inline; filename="mailflare.ics"', "Cache-Control": "private, max-age=300", "X-Robots-Tag": "noindex" } });
 }

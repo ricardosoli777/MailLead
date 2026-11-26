@@ -139,7 +139,7 @@ test("credentials: none, wrong, wrong protocol and wrong kind are all 401, plain
 	const body = PROP("<A:displayname/>");
 	const none = await propfind(env, "/dav/", undefined, body);
 	assert.equal(none.status, 401);
-	assert.match(none.headers.get("WWW-Authenticate"), /^Basic realm="Mailflare", charset="UTF-8"$/);
+	assert.match(none.headers.get("WWW-Authenticate"), /^Basic realm="MailLead", charset="UTF-8"$/);
 	assert.equal((await propfind(env, "/dav/", { fullKey: "x".repeat(16) }, body)).status, 401);
 
 	// Plain HTTP: refused before any lookup, and no challenge to loop on.

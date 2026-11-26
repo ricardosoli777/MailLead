@@ -82,7 +82,7 @@ const SUBJECT: Record<AlertKind, string> = {
 };
 
 function alertText(hostname: string, alert: EvaluatedAlert): string {
-	const lines = [`Mailflare noticed something about ${hostname}: ${SUBJECT[alert.kind]}.`, ""];
+	const lines = [`MailLead noticed something about ${hostname}: ${SUBJECT[alert.kind]}.`, ""];
 	if ("sources" in alert.detail) {
 		for (const source of alert.detail.sources) lines.push(`${source.sourceIp}: ${source.failed} of ${source.messages} messages failed DMARC`);
 		if (alert.detail.total > alert.detail.sources.length) lines.push(`and ${alert.detail.total - alert.detail.sources.length} more`);
@@ -123,7 +123,7 @@ async function runAlerts(env: CloudflareEnv, now: Date, sendMail: SendMail) {
 				if (!created || !domain.alertEmail) continue;
 				const [owner] = await db.select({ email: users.email }).from(users).where(eq(users.id, domain.ownerId)).limit(1);
 				if (!owner) continue;
-				await sendMail(env, { to: owner.email, hostname: domain.hostname, subject: `Mailflare: ${SUBJECT[alert.kind]} (${domain.hostname})`, text: alertText(domain.hostname, alert) })
+				await sendMail(env, { to: owner.email, hostname: domain.hostname, subject: `MailLead: ${SUBJECT[alert.kind]} (${domain.hostname})`, text: alertText(domain.hostname, alert) })
 					.catch((error) => console.error(`DMARC alert email failed for ${domain.hostname}`, error));
 			}
 		} catch (error) {

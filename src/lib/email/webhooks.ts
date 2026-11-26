@@ -213,7 +213,7 @@ export async function sendTestDelivery(
 			messageId: "test",
 			from: "postmaster@example.com",
 			to: "inbox@example.com",
-			subject: "Mailflare test delivery",
+			subject: "MailLead test delivery",
 		},
 	});
 	const delivery = await createDelivery(db, hook.id, "message.inbound", body);

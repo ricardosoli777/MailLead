@@ -81,7 +81,7 @@ export async function fetchSentMessageId(
 
 export class ResendRestrictedKeyError extends Error {
 	constructor() {
-		super("This Resend key can only send mail, so Mailflare cannot add or check domains. Add the domain in the Resend dashboard, or use a full-access key.");
+		super("This Resend key can only send mail, so MailLead cannot add or check domains. Add the domain in the Resend dashboard, or use a full-access key.");
 	}
 }
 

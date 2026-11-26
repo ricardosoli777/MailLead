@@ -187,7 +187,7 @@ export async function updateMtaSts(env: CloudflareEnv, domain: Domain, body: unk
 		if (error instanceof DnsReadError) return fail(502, "DNS_FAILED", "Could not read the current MTA-STS record");
 		throw error;
 	}
-	if (existing && !published) return fail(409, "MTA_STS_RECORD_EXISTS", "An MTA-STS record that Mailflare did not publish already exists; remove it first");
+	if (existing && !published) return fail(409, "MTA_STS_RECORD_EXISTS", "An MTA-STS record that MailLead did not publish already exists; remove it first");
 
 	const changed = !published || current.mode !== mode || current.mx !== mxJson || current.maxAge !== maxAge || current.retireAfter !== null;
 	if (!changed) return { kind: "ok", state: toState(domain, stored) };
