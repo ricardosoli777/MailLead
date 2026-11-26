@@ -18,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const branding = await getHomeBranding();
   return {
     title: branding.appName,
-    icons: { icon: branding.hasCustomIcon ? "/api/branding/icon" : "/icon-96.png" },
+    icons: { icon: branding.hasCustomIcon ? "/api/branding/icon" : "/icon-96.png?v=maillead" },
   };
 }
 

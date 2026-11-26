@@ -34,7 +34,8 @@ export async function generateMetadata(): Promise<Metadata> {
 	return {
 		title: appName,
 		description: "Multi-tenant email on Cloudflare",
-		icons: { icon: "/api/branding/icon", apple: "/apple-touch-icon.png" },
+		// The version query makes browsers drop a favicon cached from before the MailLead rebrand.
+		icons: { icon: "/api/branding/icon?v=maillead", apple: "/apple-touch-icon.png?v=maillead" },
 		appleWebApp: {
 			capable: true,
 			title: appName,
