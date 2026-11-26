@@ -48,7 +48,7 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 
 ### Onda 3 — Motor de envio e proteção (U5, R1–R5, R10, K2)
 - [x] Lotes, ritmo, cota, aquecimento, eventos SNS, disjuntor (ver [envio.md](envio.md)).
-- [ ] Testar com o simulador do SES (`success@`, `bounce@`, `complaint@simulator.amazonses.com`). Depende da chave da AWS cadastrada.
+- [x] Testar com o simulador do SES em produção (2026-11-26): `bounce@` e `complaint@` bloquearam o endereço.
 - [x] Teste de carga sem envio real (2.000 destinatários em banco em memória; falta medir no D1 real).
 
 **Sai quando:** o disjuntor pausa um envio simulado e uma repetição de fila não duplica.
