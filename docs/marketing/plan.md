@@ -61,7 +61,7 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 - [x] Inativos de 180 dias fora por padrão (R7), limite de campanhas por pessoa em 7 dias (R8), revisão antes do envio (R9).
 - [ ] Enviar uma campanha real a uma lista pequena depois de publicada.
 
-**Estado em 2026-11-26:** construída e testada localmente (`tests/marketing-sending.test.mjs`), ainda não publicada.
+**Estado em 2026-11-26:** construída e testada localmente (`tests/marketing-sending.test.mjs`), publicada.
 
 ### Onda 5 — Captura e integrações (R6, I1–I3)
 - [ ] Formulários, confirmação dupla, API e webhook.
