@@ -18,7 +18,7 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 ### Onda 0 — Preparação (sem código de produto)
 - [ ] Responder as perguntas em aberto.
 - [x] SES: `us-east-1`, produção, 50.000 por 24 h, 14 por segundo (2026-11-26).
-- [ ] `news.klead.com.br` cadastrado no SES; DNS importado e conferido em 2026-11-26; falta confirmar a verificação no SES e o e-mail de teste. DMARC em `p=reject`, porque o domínio principal já usa `sp=reject`.
+- [x] `news.klead.com.br` verificado no SES e DNS no ar. DMARC em `p=reject`, porque o domínio principal já usa `sp=reject`.
 - [ ] Escolher o nome e criar logo, selo e favicon (M1–M3); aplicar em Admin → Branding e conferir o que ainda mostra o nome original.
 - [ ] Cadastrar o domínio no Google Postmaster Tools.
 - [ ] Conferir as regras atuais de AWS, Gmail, Yahoo e Outlook.
@@ -26,6 +26,8 @@ Tarefas → verificação de todos os IDs → demonstração → **aprovação d
 - [ ] Confirmar o que será reaproveitado.
 
 **Sai quando:** domínio verificado no SES e e-mail de teste passando em SPF, DKIM e DMARC.
+
+**Cumprido em 2026-11-26:** teste no Gmail com SPF, DKIM (`news.klead.com.br`) e DMARC em PASS. Os demais itens da onda seguem abertos.
 
 ### Onda 1 — Modelos (T1–T8)
 - [x] Aba Marketing e `MARKETING_DB`.
