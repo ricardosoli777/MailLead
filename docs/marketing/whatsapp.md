@@ -19,7 +19,7 @@ Somente para quem se cadastrou e aceitou receber no WhatsApp. Sem disparo em mas
 
 ## Mensagem escrita
 
-O passo **Texto no WhatsApp** manda só a mensagem; o passo de áudio aceita uma mensagem junto, antes ou depois. Valem as variáveis do lead e dos dados do rodapé. A autorização, o horário e o ritmo são os mesmos do áudio.
+O passo **WhatsApp** do funil tem um campo de texto e um de áudio: vale um, o outro ou os dois, na ordem escolhida. Valem as variáveis do lead e dos dados do rodapé. A autorização, o horário e o ritmo são os mesmos do áudio.
 
 ## Falta
 - "SAIR" automático (exige o webhook da instância do MailLead apontando para cá). Hoje é o botão Parar WhatsApp no contato.

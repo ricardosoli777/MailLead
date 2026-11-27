@@ -27,7 +27,7 @@ const FLOW_STATUS: Record<FlowStatus, { label: string; className: string }> = {
 };
 
 const DRAG_TYPE = "application/x-flow-step";
-const PALETTE: StepType[] = ["email", "whatsapp", "whatsapp_text", "wait", "condition", "tag", "exit"];
+const PALETTE: StepType[] = ["email", "whatsapp", "wait", "condition", "tag", "exit"];
 const json = (method: string, body: unknown): RequestInit => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 const branchOf = (handle: string | null | undefined): Branch => (handle === "yes" || handle === "no" ? handle : "");
 
@@ -49,8 +49,10 @@ function describe(node: FlowNode, templates: Template[]): { title: string; detai
 			const template = templates.find((item) => item.id === node.templateId);
 			return { title: node.name || template?.name || "E-mail", detail: node.subject || template?.subject || "", hint: template ? "" : "Sem conteúdo ainda" };
 		}
-		case "whatsapp": return { title: node.name || "Áudio", detail: node.audioId ? "áudio pronto" : "", hint: node.audioId ? "" : "Sem áudio ainda" };
-		case "whatsapp_text": return { title: node.name || "Mensagem", detail: node.message, hint: node.message.trim() ? "" : "Sem mensagem ainda" };
+		case "whatsapp": {
+			const parts = [node.message?.trim() && "texto", node.audioId && "áudio"].filter(Boolean).join(" + ");
+			return { title: node.name || "Mensagem", detail: parts, hint: parts ? "" : "Sem conteúdo ainda" };
+		}
 		case "wait": return { title: waitText(node.amount, node.unit), detail: "antes de continuar", hint: "" };
 		case "condition": return node.test === "tag"
 			? { title: node.tag ? `Tem a etiqueta "${node.tag}"?` : "Tem a etiqueta?", detail: "", hint: node.tag ? "" : "Escolha a etiqueta" }
@@ -454,7 +456,7 @@ function Editor({ flow, lists, templates: initialTemplates, tags, onClose, onCha
 
 			{message && !content && <p role="status" className={`fixed inset-x-4 top-16 z-[140] mx-auto w-fit max-w-xl rounded-xl px-4 py-3 text-sm shadow-lg ${message.error ? "bg-red-50 text-red-800" : "bg-green-50 text-green-800"}`} onClick={() => setMessage(null)}>{message.text}</p>}
 
-			{opened?.kind === "test" && <FlowTestDialog flowId={flow.id} active={status === "active"} needsPhone={graph.nodes.some((node) => node.type === "whatsapp" || node.type === "whatsapp_text")} onClose={() => setOpened(null)} onChanged={() => void onChanged()} />}
+			{opened?.kind === "test" && <FlowTestDialog flowId={flow.id} active={status === "active"} needsPhone={graph.nodes.some((node) => node.type === "whatsapp")} onClose={() => setOpened(null)} onChanged={() => void onChanged()} />}
 			{opened?.kind === "start" && <StartDialog draft={draft} lists={lists} tags={tags} readOnly={readOnly} onChange={patchDraft} onClose={() => setOpened(null)} />}
 			{opened?.kind === "pick" && <PickDialog types={PALETTE} onClose={() => setOpened(null)} onPick={(type) => add(type, opened.at ?? positionBelow(graph, opened.from, opened.branch), opened)} />}
 			{opened?.kind === "pickLine" && <PickDialog types={PALETTE.filter((type) => type !== "exit")} onClose={() => setOpened(null)} onPick={(type) => addLine(type, opened.line)} />}

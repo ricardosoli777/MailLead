@@ -31,8 +31,7 @@ function Field({ label, help, children }: { label: string; help?: string; childr
 
 const STEP_HELP: Record<StepType, string> = {
 	email: "Envia uma mensagem. O conteúdo pode ser escrito agora ou depois.",
-	whatsapp: "Manda um áudio para quem autorizou o WhatsApp no formulário.",
-	whatsapp_text: "Manda uma mensagem escrita para quem autorizou o WhatsApp no formulário.",
+	whatsapp: "Manda um texto, um áudio ou os dois para quem autorizou o WhatsApp no formulário.",
 	wait: "Segura a pessoa por segundos, minutos, horas ou dias.",
 	condition: "Separa em dois caminhos: Sim e Não.",
 	tag: "Marca a pessoa, ou tira uma marca.",
@@ -177,18 +176,6 @@ function MessageField({ label, value, readOnly, onChange }: { label: string; val
 	);
 }
 
-function TextFields({ step, readOnly, onChange }: StepDialogProps & { step: Extract<FlowNode, { type: "whatsapp_text" }> }) {
-	return (
-		<>
-			<Field label="Nome desta etapa" help="Só você vê. Ex.: Lembrete da aula.">
-				<Input value={step.name} disabled={readOnly} maxLength={80} placeholder="Mensagem" onChange={(event) => onChange({ name: event.target.value })} />
-			</Field>
-			<MessageField label="Mensagem" value={step.message} readOnly={readOnly} onChange={(message) => onChange({ message })} />
-			<p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">No WhatsApp, *assim* fica em negrito e _assim_ em itálico. {PACE}</p>
-		</>
-	);
-}
-
 /** Records or uploads right in the step; the audio is saved as soon as it is ready. */
 function WhatsAppFields({ step, readOnly, onChange }: StepDialogProps & { step: Extract<FlowNode, { type: "whatsapp" }> }) {
 	const [file, setFile] = useState<File | null>(null);
@@ -214,22 +201,26 @@ function WhatsAppFields({ step, readOnly, onChange }: StepDialogProps & { step: 
 
 	return (
 		<>
-			<Field label="Nome desta etapa" help="Só você vê. Ex.: Boas-vindas em áudio.">
-				<Input value={step.name} disabled={readOnly} maxLength={80} placeholder="Áudio" onChange={(event) => onChange({ name: event.target.value })} />
+			<Field label="Nome desta etapa" help="Só você vê. Ex.: Boas-vindas, Lembrete da aula.">
+				<Input value={step.name} disabled={readOnly} maxLength={80} placeholder="Mensagem" onChange={(event) => onChange({ name: event.target.value })} />
 			</Field>
-			{step.audioId && !file && <audio controls src={`/api/marketing/audio/${step.audioId}`} className="h-10 w-full" />}
-			{!readOnly && <AudioRecorder value={file} onChange={(next) => void choose(next)} />}
-			{state && <p role="status" className={`text-xs ${state.error ? "text-red-700" : "text-green-700"}`}>{state.text}</p>}
-			<MessageField label="Mensagem junto (opcional)" value={step.message ?? ""} readOnly={readOnly} onChange={(message) => onChange({ message })} />
-			{!!step.message?.trim() && (
-				<Field label="A mensagem sai">
+			<MessageField label="Texto" value={step.message ?? ""} readOnly={readOnly} onChange={(message) => onChange({ message })} />
+			<div className="space-y-1">
+				<span className="block text-xs font-medium text-neutral-600">Áudio</span>
+				{step.audioId && !file && <audio controls src={`/api/marketing/audio/${step.audioId}`} className="h-10 w-full" />}
+				{!readOnly && <AudioRecorder value={file} onChange={(next) => void choose(next)} />}
+				{!readOnly && step.audioId && !file && <Button type="button" size="sm" variant="outline" onClick={() => onChange({ audioId: "" })}>Tirar o áudio</Button>}
+				{state && <p role="status" className={`text-xs ${state.error ? "text-red-700" : "text-green-700"}`}>{state.text}</p>}
+			</div>
+			{!!step.message?.trim() && !!step.audioId && (
+				<Field label="Ordem">
 					<select className={SELECT} disabled={readOnly} value={step.messageFirst === false ? "after" : "before"} onChange={(event) => onChange({ messageFirst: event.target.value === "before" })}>
-						<option value="before">antes do áudio</option>
-						<option value="after">depois do áudio</option>
+						<option value="before">texto, depois o áudio</option>
+						<option value="after">áudio, depois o texto</option>
 					</select>
 				</Field>
 			)}
-			<p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">{PACE}</p>
+			<p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">Preencha o texto, o áudio ou os dois. No WhatsApp, *assim* fica em negrito. {PACE}</p>
 		</>
 	);
 }
@@ -245,10 +236,9 @@ export function StepDialog(props: StepDialogProps) {
 				</DialogHeader>
 				<div className="mt-4 space-y-3">
 					{error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
-					{stats && <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">{stats.here} aqui agora{step.type === "email" ? ` · ${stats.sent} enviados · ${stats.opened} abriram · ${stats.clicked} clicaram` : step.type === "whatsapp" || step.type === "whatsapp_text" ? ` · ${stats.sent} enviados` : ""}</p>}
+					{stats && <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">{stats.here} aqui agora{step.type === "email" ? ` · ${stats.sent} enviados · ${stats.opened} abriram · ${stats.clicked} clicaram` : step.type === "whatsapp" ? ` · ${stats.sent} enviados` : ""}</p>}
 					{step.type === "email" && <EmailFields {...props} step={step} />}
 					{step.type === "whatsapp" && <WhatsAppFields {...props} step={step} />}
-					{step.type === "whatsapp_text" && <TextFields {...props} step={step} />}
 					{step.type === "wait" && (
 						<>
 						<div className="grid grid-cols-2 gap-3">

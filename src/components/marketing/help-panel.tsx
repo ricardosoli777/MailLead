@@ -78,12 +78,11 @@ const TOPICS: Topic[] = [
 		],
 	},
 	{
-		title: "Áudio por WhatsApp no funil",
+		title: "WhatsApp no funil",
 		steps: [
 			"Em WhatsApp, salve o endereço e o token da instância e envie um teste.",
 			"Em Captura, ligue \"Pedir WhatsApp\" no formulário e salve. Se já colou o código no site, copie de novo.",
-			"Em Funis, adicione o bloco \"Áudio no WhatsApp\" e grave ou envie o áudio dentro dele. Dá para escrever uma mensagem junto, antes ou depois.",
-			"O bloco \"Texto no WhatsApp\" manda só a mensagem escrita, com variáveis como {{nome}}.",
+			"Em Funis, adicione o bloco \"WhatsApp\". Nele há um campo de texto (com variáveis como {{nome}}) e um de áudio: preencha um ou os dois.",
 			"Salve e ative o funil. Depois clique em Testar, dentro do funil, e cadastre-se com os seus dados.",
 		],
 		tips: [

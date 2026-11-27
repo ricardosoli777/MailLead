@@ -503,7 +503,7 @@ test("the footer written in the editor keeps its formatting, and nothing else ge
 
 test("a written WhatsApp message goes alone, or before or after the audio, with the person's data", async () => {
 	const steps = [
-		{ id: "step0001", type: "whatsapp_text", message: "Oi {{nome|amigo}}, sou {{remetente_empresa}}" },
+		{ id: "step0001", type: "whatsapp", audioId: "", message: "Oi {{nome|amigo}}, sou {{remetente_empresa}}" },
 		{ id: "step0002", type: "whatsapp", audioId: "aud1", message: "antes", messageFirst: true },
 		{ id: "step0003", type: "whatsapp", audioId: "aud1", message: "depois", messageFirst: false },
 	];
@@ -521,8 +521,9 @@ test("a written WhatsApp message goes alone, or before or after the audio, with 
 	assert.deepEqual(heard, [`Oi ${name || "amigo"}, sou Loja`, "antes", "audio", "audio", "depois"]);
 });
 
-test("a text step needs its message, and a button keeps its own colour with readable letters", async () => {
-	assert.ok(tree.graphErrors(tree.fromTree([{ id: "step0001", type: "whatsapp_text", message: " " }])).step0001);
+test("an empty WhatsApp step is not ready, and a button keeps its own colour with readable letters", async () => {
+	assert.ok(tree.graphErrors(tree.fromTree([{ id: "step0001", type: "whatsapp", message: " " }])).step0001);
+	assert.equal(tree.readGraph(JSON.stringify({ start: { x: 0, y: 0 }, edges: [], nodes: [{ id: "old1", type: "whatsapp_text", message: "oi" }] })).nodes[0].type, "whatsapp");
 	const render = await bundle("src/lib/marketing/render.ts", "cta.mjs");
 	const footer = { company: "Loja", contact: "c", disclaimer: "d" };
 	const parsed = render.parseDesign({ accent: "#0b57d0", footer, blocks: [{ type: "button", label: "A", url: "https://a.test", color: "#ffee00" }, { type: "button", label: "B", url: "https://b.test", color: "red;x" }] });

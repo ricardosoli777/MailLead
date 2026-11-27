@@ -24,7 +24,6 @@ export const CanvasActions = createContext<{ readOnly: boolean; addAfter: (from:
 export const STEP_STYLE: Record<StepType, { icon: typeof Mail; badge: string; accent: string }> = {
 	email: { icon: Mail, badge: "bg-blue-50 text-blue-600", accent: "#2563eb" },
 	whatsapp: { icon: Smartphone, badge: "bg-green-50 text-green-600", accent: "#16a34a" },
-	whatsapp_text: { icon: Smartphone, badge: "bg-teal-50 text-teal-600", accent: "#0d9488" },
 	wait: { icon: Clock, badge: "bg-amber-50 text-amber-600", accent: "#d97706" },
 	condition: { icon: Route, badge: "bg-violet-50 text-violet-600", accent: "#7c3aed" },
 	tag: { icon: Tag, badge: "bg-emerald-50 text-emerald-600", accent: "#059669" },
@@ -76,7 +75,7 @@ function StepNodeView({ id, data, selected }: NodeProps<StepBox>) {
 			</div>
 			{stats && (
 				<p className="border-t border-neutral-100 px-3 py-1.5 text-[11px] text-neutral-500">
-					{stats.here} aqui{step.type === "email" ? ` · ${stats.sent} enviados · ${stats.opened} abriram · ${stats.clicked} clicaram` : step.type === "whatsapp" || step.type === "whatsapp_text" ? ` · ${stats.sent} enviados` : ""}
+					{stats.here} aqui{step.type === "email" ? ` · ${stats.sent} enviados · ${stats.opened} abriram · ${stats.clicked} clicaram` : step.type === "whatsapp" ? ` · ${stats.sent} enviados` : ""}
 				</p>
 			)}
 			{error && <p className="rounded-b-2xl border-t border-red-100 bg-red-50 px-3 py-1.5 text-[11px] text-red-700">{error}</p>}

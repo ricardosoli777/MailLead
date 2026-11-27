@@ -2,9 +2,8 @@ export type WaitUnit = "seconds" | "minutes" | "hours" | "days";
 
 export type FlowStep =
 	| { id: string; type: "email"; name: string; templateId: string; subject: string }
-	/** An audio, with an optional written message sent before it or after it. */
+	/** A written message, an audio or both. `audioId` is empty when there is no audio. */
 	| { id: string; type: "whatsapp"; name: string; audioId: string; message?: string; messageFirst?: boolean }
-	| { id: string; type: "whatsapp_text"; name: string; message: string }
 	| { id: string; type: "wait"; amount: number; unit: WaitUnit }
 	| { id: string; type: "condition"; test: "opened" | "clicked" | "tag"; tag: string }
 	| { id: string; type: "tag"; action: "add" | "remove"; tag: string }

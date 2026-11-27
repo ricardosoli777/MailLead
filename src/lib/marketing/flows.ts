@@ -24,8 +24,7 @@ const STALE_CLAIM_MS = 15 * 60 * 1000;
 
 /** What the funnel needs for WhatsApp: `send` is an audio. Without it, people wait at the step. */
 export type WhatsAppSender = { connected: () => Promise<boolean>; send: (phone: string, audioId: string) => Promise<void>; text: (phone: string, message: string) => Promise<void> };
-type WhatsAppStep = Extract<FlowStep, { type: "whatsapp" | "whatsapp_text" }>;
-const isWhatsApp = (step: FlowStep): step is WhatsAppStep => step.type === "whatsapp" || step.type === "whatsapp_text";
+type WhatsAppStep = Extract<FlowStep, { type: "whatsapp" }>;
 
 /** 8h to 20h in Brasília (UTC-3, no daylight saving). */
 const daytime = (now: number) => {
@@ -104,12 +103,12 @@ export async function activateFlow(db: D1Database, id: string, now = Date.now())
 		if (left) return `Falta preencher o e-mail "${template.name}": ${left}`;
 		mails.push({ id: campaignId(id, step.id), subject, design: JSON.stringify(parsed.design) });
 	}
-	const audios = graph.nodes.flatMap((step) => (step.type === "whatsapp" ? [step.audioId] : []));
+	const audios = graph.nodes.flatMap((step) => (step.type === "whatsapp" && step.audioId ? [step.audioId] : []));
 	for (const step of graph.nodes) {
-		const left = isWhatsApp(step) ? unfilled(step.message ?? "") : null;
+		const left = step.type === "whatsapp" ? unfilled(step.message ?? "") : null;
 		if (left) return `Falta preencher uma mensagem de WhatsApp: ${left}`;
 	}
-	if (graph.nodes.some(isWhatsApp) && !(await db.prepare("SELECT 1 AS ok FROM marketing_settings WHERE key = 'whatsapp'").first())) return "Conecte o WhatsApp em Configurações > WhatsApp antes de ativar.";
+	if (graph.nodes.some((step) => step.type === "whatsapp") && !(await db.prepare("SELECT 1 AS ok FROM marketing_settings WHERE key = 'whatsapp'").first())) return "Conecte o WhatsApp em Configurações > WhatsApp antes de ativar.";
 	for (const audioId of audios) {
 		if (!(await db.prepare("SELECT 1 AS ok FROM marketing_audio WHERE id = ?").bind(audioId).first())) return "Um áudio usado no funil não foi encontrado. Grave de novo.";
 	}
@@ -201,7 +200,7 @@ async function sendWhatsApp(db: D1Database, run: Run, step: WhatsAppStep, audio:
 		const footer = await readFooter(db);
 		const message = applyVariables(step.message ?? "", { ...(JSON.parse(who.fields || "{}") as Record<string, string>), nome: who.name, email: who.email, ...(footer ? senderVariables(footer) : {}) }).trim();
 		const parts = message ? [() => sender.text(who.phone, message)] : [];
-		if (step.type === "whatsapp") parts[step.messageFirst === false ? "unshift" : "push"](() => sender.send(who.phone, step.audioId));
+		if (step.audioId) parts[step.messageFirst === false ? "unshift" : "push"](() => sender.send(who.phone, step.audioId));
 		if (!parts.length) throw new Error("Mensagem vazia.");
 		for (const part of parts) await part();
 		await finish("sent", "", now);
@@ -233,7 +232,7 @@ async function advance(db: D1Database, run: Run, nodes: Map<string, Node>, audio
 			if (send.status === "pending" || send.status === "sending") break;
 			lastSend = send.id;
 			stepId = node.next;
-		} else if (isWhatsApp(step)) {
+		} else if (step.type === "whatsapp") {
 			if (!(await sendWhatsApp(db, run, step, audio, now))) break;
 			stepId = node.next;
 		} else if (step.type === "wait") {
