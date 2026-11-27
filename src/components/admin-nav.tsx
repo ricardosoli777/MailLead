@@ -70,7 +70,6 @@ const sections: { id?: string; labelKey?: TranslationKey; links: AdminNavLink[] 
     id: "Product",
     labelKey: "admin.nav.product",
     links: [
-      { href: "/marketing", labelKey: "admin.nav.marketing", icon: Mail, permission: "primary" },
       { href: "/branding", labelKey: "admin.nav.branding", icon: Palette, permission: "primary" },
     ],
   },

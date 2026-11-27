@@ -92,7 +92,7 @@ function TargetFields({ value, onChange, lists }: { value: typeof EMPTY; onChang
 			<label className="block space-y-1">
 				<span className="block text-xs font-medium text-neutral-600">Entra na lista</span>
 				<select className={SELECT} value={value.listId} onChange={(event) => onChange({ listId: event.target.value })}>
-					<option value="">{lists.length ? "Escolha…" : "Crie uma lista na aba Contatos"}</option>
+					<option value="">{lists.length ? "Escolha…" : "Crie uma lista em Contatos"}</option>
 					{lists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}
 				</select>
 			</label>

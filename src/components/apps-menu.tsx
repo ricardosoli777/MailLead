@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { CalendarDays, HardDrive, Inbox, More01, UsersRound } from "@/components/icons";
+import { CalendarDays, HardDrive, Inbox, More01, Send, UsersRound } from "@/components/icons";
 import { useLanguage } from "@/components/language-provider";
 import { useDismissible } from "@/components/use-dismissible";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import type { AppsMenuProps } from "./mailbox-selector-types";
 
 export function AppsMenu({ user }: AppsMenuProps) {
 	const { t } = useLanguage();
 	const [open, setOpen] = useState(false);
 	const ref = useRef<HTMLDivElement>(null);
+	const primary = !!useCurrentUser()?.isPrimaryAdmin;
 	useDismissible(open, () => setOpen(false), ref);
 
 	const items = [
@@ -18,6 +20,7 @@ export function AppsMenu({ user }: AppsMenuProps) {
 		{ href: "/calendar", label: t("account.calendar"), icon: CalendarDays, show: user?.calendarEnabled !== false },
 		{ href: "/drive", label: t("account.drive"), icon: HardDrive, show: user?.driveEnabled !== false },
 		{ href: "/contacts", label: t("navigation.contacts"), icon: UsersRound, show: true },
+		{ href: "/marketing", label: t("admin.nav.marketing"), icon: Send, show: primary },
 	].filter((item) => item.show);
 
 	return (

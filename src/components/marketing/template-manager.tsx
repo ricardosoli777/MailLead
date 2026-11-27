@@ -44,8 +44,7 @@ export function TemplateManager() {
 	return (
 		<div className="space-y-6">
 			<div>
-				<h1 className="text-2xl font-medium text-neutral-900 md:text-3xl">Modelos de e-mail</h1>
-				<p className="mt-2 text-sm text-neutral-500">Crie mensagens com logo, imagens, botões e rodapé. Os modelos salvos também aparecem no compositor.</p>
+				<p className="text-sm text-neutral-500">Crie mensagens com logo, imagens, botões e rodapé. Os modelos salvos também aparecem no compositor.</p>
 			</div>
 			{error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 			<section className="space-y-3 rounded-3xl bg-white p-6">

@@ -140,7 +140,7 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 		<section className="space-y-3 rounded-3xl bg-white p-6">
 			<h2 className="text-base font-semibold">Criar com IA</h2>
 			<p className="text-sm text-neutral-500">Conte o que você oferece, para quem e o objetivo. A IA monta o fluxo e escreve os e-mails. Você revisa antes de criar.</p>
-			{settings && !ready && <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">Abra a aba <strong>IA</strong>, cole a sua chave e escolha o modelo.</p>}
+			{settings && !ready && <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">Abra <a href="/marketing/ia" className="font-semibold underline">IA</a> no menu, cole a sua chave e escolha o modelo.</p>}
 			{ready && <p className="text-xs text-neutral-500">Usando {AI_PROVIDERS.find((item) => item.id === provider)?.label} · {config.model}</p>}
 			{messages.length > 0 && (
 				<div className="max-h-80 space-y-2 overflow-y-auto" aria-live="polite">
