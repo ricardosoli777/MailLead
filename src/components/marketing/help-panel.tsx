@@ -23,7 +23,7 @@ const TOPICS: Topic[] = [
 			"Troque o que está em [MAIÚSCULAS] e o endereço exemplo.com. O funil não ativa enquanto sobrar algum.",
 			"Com um funil ativo, os números da tela de Funis se atualizam sozinhos a cada 10 segundos.",
 			"Monte com blocos: título, texto, imagem, botão, vídeo ou áudio (viram capa com link) e divisor.",
-			"Preencha o rodapé (empresa, contato e por que a pessoa recebe). Sem ele o modelo não é salvo.",
+			"Preencha o rodapé (empresa ou nome, contato e por que a pessoa recebe). Sem ele o modelo não é salvo.",
 			"Salve e envie um teste para você.",
 		],
 		tips: [

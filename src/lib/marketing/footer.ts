@@ -18,7 +18,7 @@ export async function withFooter(db: D1Database, design: Design): Promise<Design
 
 export async function saveFooter(db: D1Database, input: unknown): Promise<{ error: string } | { footer: Footer; templates: number; sending: number }> {
 	const parsed = parseDesign({ blocks: [], footer: input });
-	if ("error" in parsed) return { error: "Preencha os três campos: nome, contato e aviso legal." };
+	if ("error" in parsed) return { error: "Preencha a empresa ou o seu nome, o contato e o aviso legal." };
 	const { footer } = parsed.design;
 	await writeSetting(db, "footer", footer);
 	const json = JSON.stringify(footer);

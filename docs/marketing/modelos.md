@@ -6,7 +6,7 @@ Aparecem em **Marketing → Criar → Modelos** e dentro da caixa de e-mail do f
 
 ## Dados do rodapé
 
-Em **Modelos**, preencha uma vez o nome (empresa ou pessoa), o contato e o aviso legal. **Salvar e aplicar em todos** troca o rodapé de todos os modelos e dos funis e campanhas ainda não concluídos, mesmo ativos. O que já foi enviado não muda. Enquanto não preencher, cada modelo tem o seu rodapé.
+Em **Modelos**, preencha uma vez: nome, sobrenome, empresa, endereço, CEP, cidade, estado, país, contato, aviso legal e a opção "Todos os direitos reservados". Obrigatórios só a empresa ou o nome, o contato e o aviso legal; campo vazio não aparece. **Salvar e aplicar em todos** troca o rodapé de todos os modelos e dos funis e campanhas ainda não concluídos, mesmo ativos. O que já foi enviado não muda. Enquanto não preencher, cada modelo tem o seu rodapé.
 
 ## Link de descadastro
 

@@ -451,3 +451,14 @@ test("the footer filled in once reaches the templates and what is still going ou
 	assert.match(sent[0].text, /Rica Cursos/);
 	assert.doesNotMatch(sent[0].text, /KLEAD\n/);
 });
+
+test("a person can sign, with address and rights line; empty fields stay out", async () => {
+	const db = database();
+	assert.ok((await signature.saveFooter(db, { company: "", contact: "x", disclaimer: "y" })).error);
+	const { footer } = await signature.saveFooter(db, { company: "", firstName: "Ana", lastName: "Lima", address: "Rua A, 1", zip: "01000-000", city: "São Paulo", state: "SP", country: "", contact: "oi@ana.test", disclaimer: "Você se cadastrou.", rights: true });
+	assert.equal(footer.country, undefined);
+	const text = (await bundle("src/lib/marketing/render.ts", "signed.mjs")).renderText({ ...design, footer });
+	assert.match(text, /Ana Lima\n\nRua A, 1 · São Paulo - SP · CEP 01000-000\n\noi@ana\.test/);
+	assert.match(text, /© \d{4} Ana Lima\. Todos os direitos reservados\./);
+	assert.equal(text.match(/Ana Lima/g).length, 2);
+});

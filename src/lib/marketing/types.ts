@@ -7,7 +7,21 @@ export type Block =
 	| { type: "media"; kind: "video" | "audio"; url: string; imageUrl?: string; label: string }
 	| { type: "divider" };
 
-export type Footer = { company: string; contact: string; disclaimer: string };
+/** Who sends. `company` may be empty when a person (`firstName`) signs instead. */
+export type Footer = {
+	company: string;
+	contact: string;
+	disclaimer: string;
+	firstName?: string;
+	lastName?: string;
+	address?: string;
+	zip?: string;
+	city?: string;
+	state?: string;
+	country?: string;
+	/** Adds "© year Name. Todos os direitos reservados." */
+	rights?: boolean;
+};
 
 export type Design = { accent: string; preheader: string; blocks: Block[]; footer: Footer };
 

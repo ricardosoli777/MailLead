@@ -96,6 +96,16 @@ function renderBlock(block: Block, accent: string, fill: (value: string) => stri
 
 const accentOf = (design: Design) => (/^#[0-9a-f]{6}$/i.test(design.accent) ? design.accent : "#0b57d0");
 
+/** The footer above the legal notice: who signs and where to find them. The first line is the signature. */
+function signature({ company, contact, firstName, lastName, address, zip, city, state, country }: Design["footer"]): string[] {
+	const person = [firstName, lastName].filter(Boolean).join(" ");
+	const place = [address, [city, state].filter(Boolean).join(" - "), zip && `CEP ${zip}`, country].filter(Boolean).join(" · ");
+	return [company || person, company ? person : "", place, contact].filter((line): line is string => Boolean(line));
+}
+
+const rightsLine = ({ rights, company, firstName, lastName }: Design["footer"]) =>
+	rights ? `© ${new Date().getFullYear()} ${company || [firstName, lastName].filter(Boolean).join(" ")}. Todos os direitos reservados.` : "";
+
 /** Stands in for each person's own link in previews, so the footer is seen as it will arrive. */
 export const PREVIEW_UNSUBSCRIBE = "https://exemplo.invalid/descadastro";
 
@@ -103,11 +113,12 @@ export function renderHtml(design: Design, variables: Record<string, string> = {
 	const fill = (value: string) => applyVariables(value, variables);
 	const accent = accentOf(design);
 	const preheader = design.preheader ? `<div style="display:none;max-height:0;overflow:hidden">${esc(fill(design.preheader))}</div>` : "";
-	const { company, contact, disclaimer } = design.footer;
+	const { disclaimer } = design.footer;
+	const rights = rightsLine(design.footer);
 	const footer = [
-		company && `<strong>${esc(fill(company))}</strong>`,
-		contact && esc(fill(contact)),
+		...signature(design.footer).map((line, index) => (index ? esc(fill(line)) : `<strong>${esc(fill(line))}</strong>`)),
 		disclaimer && esc(fill(disclaimer)).replace(/\n/g, "<br>"),
+		rights && esc(rights),
 		safeUrl(unsubscribeUrl) && `<a href="${esc(unsubscribeUrl)}" style="color:#5f6368;text-decoration:underline">Descadastre-se aqui</a>`,
 	].filter(Boolean).join("<br>");
 	return `${preheader}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f8fc"><tr><td align="center" style="padding:24px 8px"><table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background-color:#ffffff;border-top:4px solid ${accent};border-radius:12px"><tr><td style="height:14px"></td></tr>${design.blocks.map((block) => renderBlock(block, accent, fill)).join("")}<tr><td style="padding:20px 32px 28px;border-top:1px solid #e8eaed;${font};font-size:12px;line-height:1.6;color:#5f6368;text-align:center">${footer}</td></tr></table></td></tr></table>`;
@@ -131,8 +142,7 @@ export function renderText(design: Design, variables: Record<string, string> = {
 				return "----------";
 		}
 	});
-	const { company, contact, disclaimer } = design.footer;
-	return [...parts, "--", fill(company), fill(contact), fill(disclaimer), safeUrl(unsubscribeUrl) && `Descadastre-se aqui: ${unsubscribeUrl}`].filter(Boolean).join("\n\n");
+	return [...parts, "--", ...signature(design.footer).map(fill), fill(design.footer.disclaimer), rightsLine(design.footer), safeUrl(unsubscribeUrl) && `Descadastre-se aqui: ${unsubscribeUrl}`].filter(Boolean).join("\n\n");
 }
 
 /** The only way to build a marketing message: it refuses to exist without a way out (U1). */
@@ -176,7 +186,12 @@ export function parseDesign(input: unknown): { design: Design } | { error: strin
 				return { error: "Bloco desconhecido." };
 		}
 	}
-	const footer = { company: str(value.footer?.company, 200).trim(), contact: str(value.footer?.contact, 300).trim(), disclaimer: str(value.footer?.disclaimer, 2000).trim() };
-	if (!footer.company || !footer.contact || !footer.disclaimer) return { error: "Preencha o rodapé: empresa, contato e aviso legal." };
+	const footer: Design["footer"] = { company: str(value.footer?.company, 200).trim(), contact: str(value.footer?.contact, 300).trim(), disclaimer: str(value.footer?.disclaimer, 2000).trim() };
+	for (const key of ["firstName", "lastName", "address", "zip", "city", "state", "country"] as const) {
+		const extra = str(value.footer?.[key], key === "address" ? 300 : 100).trim();
+		if (extra) footer[key] = extra;
+	}
+	if (value.footer?.rights === true) footer.rights = true;
+	if (!(footer.company || footer.firstName) || !footer.contact || !footer.disclaimer) return { error: "Preencha o rodapé: empresa ou nome, contato e aviso legal." };
 	return { design: { accent: accentOf({ accent: str(value.accent, 7) } as Design), preheader: str(value.preheader, 200), blocks, footer } };
 }
