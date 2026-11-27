@@ -4,7 +4,7 @@ Domínio comprado: `ricardosoares.ia.br` (Registro.br). **Você** = quem é dono
 
 | Endereço | Para quê |
 |---|---|
-| `maillead.ricardosoares.ia.br` | O app |
+| `mail.ricardosoares.ia.br` | O app |
 | `ricardosoares.ia.br` | Caixa do negócio: `suporte@` |
 | `news.ricardosoares.ia.br` | Só envio de marketing |
 
@@ -19,9 +19,9 @@ Domínio comprado: `ricardosoares.ia.br` (Registro.br). **Você** = quem é dono
 
 ## 2. Cloudflare: colocar o domínio
 - [x] Adicionado na mesma conta do app.
-- [ ] **Você:** no Registro.br, abra o domínio → **Alterar servidores DNS** e coloque os dois que a Cloudflare mostrar.
-- [ ] **Você:** na Cloudflare → DNS → Records, apague os registros de estacionamento que possam ter sido importados: **MX** apontando para `.` e **TXT** `v=spf1 -all`. Com eles o domínio recusa e-mail.
-- [ ] Espere o domínio ficar **Active** (pode levar algumas horas).
+- [x] No Registro.br, abra o domínio → **Alterar servidores DNS** e coloque os dois que a Cloudflare mostrar.
+- [x] Na Cloudflare → DNS → Records, apague os registros de estacionamento que possam ter sido importados: **MX** apontando para `.` e **TXT** `v=spf1 -all`. Com eles o domínio recusa e-mail.
+- [x] Espere o domínio ficar **Active** (pode levar algumas horas).
 
 ## 3. Cloudflare: permissão do app no domínio novo
 O app usa o segredo `CF_TOKEN` para configurar o e-mail.
@@ -29,8 +29,8 @@ O app usa o segredo `CF_TOKEN` para configurar o e-mail.
 - Editar o token mantém o mesmo valor. Se criar outro, grave você mesmo no Worker. Não cole token no chat.
 
 ## 4. Endereço do app
-- [ ] **Você** (ou Claude, com autorização): Workers & Pages → `mailflare` → Settings → Domains & Routes → **Add** → Custom domain → `maillead.ricardosoares.ia.br`.
-- [ ] Na mesma tela, em Variables: se existir `APP_URL`, mude para `https://maillead.ricardosoares.ia.br`. Se não existir, crie.
+- [x] Workers & Pages → `mailflare` → Settings → Domains & Routes → **Add** → Custom domain → `mail.ricardosoares.ia.br`.
+- [ ] Na mesma tela, em Variables: se existir `APP_URL`, mude para `https://mail.ricardosoares.ia.br`. Se não existir, crie.
 - [ ] Abra o endereço novo e entre com a senha.
 - [ ] **Você:** cadastre uma passkey nova e ative a verificação em duas etapas (TOTP) em Settings → Security.
 
@@ -70,9 +70,9 @@ _dmarc.news                TXT    "v=DMARC1; p=quarantine; adkim=s; aspf=r;"
 - [ ] Espere a AWS mostrar o domínio e o MAIL FROM como **Verified**.
 
 ## 7. MailLead: marketing no endereço novo
-Sempre abrindo `https://maillead.ricardosoares.ia.br`.
+Sempre abrindo `https://mail.ricardosoares.ia.br`.
 
-- [ ] Marketing → Envio: remetente `send@news.ricardosoares.ia.br`, responder para `suporte@ricardosoares.ia.br`, **endereço público** `https://maillead.ricardosoares.ia.br`. Salvar.
+- [ ] Marketing → Envio: remetente `send@news.ricardosoares.ia.br`, responder para `suporte@ricardosoares.ia.br`, **endereço público** `https://mail.ricardosoares.ia.br`. Salvar.
 - [ ] **Configurar eventos** (refaz o aviso de devoluções para o endereço novo). Espere ficar confirmado.
 - [ ] **Claude**, com autorização: zerar a contagem de aquecimento. Os testes feitos com o domínio antigo não aquecem o novo.
 - [ ] Todas as verificações em verde → enviar teste e conferir SPF, DKIM e DMARC em **PASS** no Gmail ("Mostrar original").
