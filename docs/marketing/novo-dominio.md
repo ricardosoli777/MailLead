@@ -72,7 +72,7 @@ _dmarc.news                TXT    "v=DMARC1; p=quarantine; adkim=s; aspf=r;"
 ## 7. MailLead: marketing no endereço novo
 Sempre abrindo `https://maillead.ricardosoares.ia.br`.
 
-- [ ] Marketing → Envio: remetente `suporte@news.ricardosoares.ia.br`, responder para `suporte@ricardosoares.ia.br`, **endereço público** `https://maillead.ricardosoares.ia.br`. Salvar.
+- [ ] Marketing → Envio: remetente `send@news.ricardosoares.ia.br`, responder para `suporte@ricardosoares.ia.br`, **endereço público** `https://maillead.ricardosoares.ia.br`. Salvar.
 - [ ] **Configurar eventos** (refaz o aviso de devoluções para o endereço novo). Espere ficar confirmado.
 - [ ] **Claude**, com autorização: zerar a contagem de aquecimento. Os testes feitos com o domínio antigo não aquecem o novo.
 - [ ] Todas as verificações em verde → enviar teste e conferir SPF, DKIM e DMARC em **PASS** no Gmail ("Mostrar original").
