@@ -23,10 +23,22 @@ type AuditInput = {
 	routing: { records: CfDnsRecord[]; missing: CfDnsRecord[] };
 	sending: CfDnsRecord[];
 	dkimSelector?: string;
+	/** Amazon SES signs through CNAMEs, not a TXT record: all of them must resolve. */
+	dkimCnames?: { name: string; value: string }[];
 };
 
 function isTxt(record: CfDnsRecord) {
 	return record.type?.toUpperCase() === "TXT";
+}
+
+const hostOf = (value: string) => value.trim().toLowerCase().replace(/\.$/, "");
+
+async function checkCnames(records: { name: string; value: string }[]): Promise<DnsAuthCheck> {
+	const results = await Promise.all(
+		records.map((record) => check("dkim", "DKIM", record.name, "CNAME", (value) => hostOf(value) === hostOf(record.value))),
+	);
+	const failed = results.find((result) => result.status === "missing") ?? results.find((result) => result.status === "unknown");
+	return failed ?? { ...results[0], found: results.flatMap((result) => result.found) };
 }
 
 async function check(
@@ -95,7 +107,9 @@ export async function auditDomainDns(
 		check("dmarc", "DMARC", `_dmarc.${hostname}`, "TXT", (value) => /v=DMARC1/i.test(value)),
 	]);
 
-	const dkim: DnsAuthCheck = dkimName
+	const dkim: DnsAuthCheck = view.dkimCnames?.length
+		? await checkCnames(view.dkimCnames)
+		: dkimName
 		? await check("dkim", "DKIM", dkimName, "TXT", () => true)
 		: {
 				record: "dkim",

@@ -167,3 +167,26 @@ test("an unrelated MX still fails the Resend receiving MX step", async () => {
 	answerDns({ "example.com|MX": ["10 mail.other.net."] });
 	assert.equal((await mxStep()).ok, false);
 });
+
+test("SES DKIM is read from its CNAMEs", async () => {
+	const { auditDomainDns } = await import(pathToFileURL(join(bundleDirectory, "entry.mjs")).href);
+	const original = globalThis.fetch;
+	const records = [{ name: "a._domainkey.example.com", value: "a.dkim.amazonses.com" }, { name: "b._domainkey.example.com", value: "b.dkim.amazonses.com" }];
+	const published = new Set(["a", "b"]);
+	globalThis.fetch = async (url) => {
+		const name = new URL(url).searchParams.get("name");
+		const token = name.split(".")[0];
+		const answer = name.includes("_domainkey") && published.has(token) ? [{ type: 5, data: `${token}.dkim.amazonses.com.` }] : [];
+		return new Response(JSON.stringify({ Status: 0, Answer: answer }));
+	};
+	try {
+		const view = { routing: { records: [], missing: [] }, sending: [], dkimCnames: records };
+		assert.equal((await auditDomainDns("example.com", view, "ses")).dkim.status, "ok");
+		published.delete("b");
+		const broken = await auditDomainDns("example.com", view, "ses");
+		assert.equal(broken.dkim.status, "missing");
+		assert.equal(broken.dkim.name, "b._domainkey.example.com");
+	} finally {
+		globalThis.fetch = original;
+	}
+});
