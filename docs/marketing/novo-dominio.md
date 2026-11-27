@@ -78,7 +78,17 @@ Sempre abrindo `https://mail.seudominio.com.br`.
 - [ ] Marketing → Modelos → Dados do rodapé: empresa, contato e endereço do negócio. **Salvar e aplicar em todos**.
 - [ ] Revisar os modelos: links e assinaturas que ainda citem o domínio antigo.
 
-## 8. Formulários, funis e WhatsApp
+## 8. WhatsApp (Evo Go dentro do app)
+O domínio novo **não** muda nada no Evo Go: o servidor continua `https://go.klead.com.br` (dividido com o CRM) e a conexão salva no MailLead continua valendo no endereço novo. Não instale, atualize nem reinicie o servidor, e não toque na instância do CRM.
+
+- [ ] No endereço novo, abra Marketing → **WhatsApp**. Deve aparecer **Conectado**.
+- [ ] Se aparecer **Desconectado**: **você** abre o Manager do Evo Go, entra **somente** na instância `maillead` e lê o QR code com o celular do negócio. Depois, **Verificar de novo**.
+- [ ] Se quiser trocar o número para o do negócio: **você** desconecta só a instância `maillead` no Manager e lê o QR code com o número novo.
+- [ ] Se precisar salvar de novo: endereço do servidor `https://go.klead.com.br` e o **token da instância `maillead`** (nunca a chave geral). **Você** cola no app, não no chat.
+- [ ] Em **Gravar e testar**, informe o seu número e use **Enviar texto de teste** e **Enviar áudio de teste**.
+- [ ] Em Captura, marque **Pedir WhatsApp** nos formulários que forem usar. Só recebe quem marcar a autorização.
+
+## 9. Formulários e funis
 - [ ] Formulários: copie o **código novo** em Captura e troque nos sites. Teste um cadastro.
 - [ ] Integrações por API ou webhook: troque o endereço.
 - [ ] Funis: salve e ative de novo os que for usar; teste com **Testar**.
