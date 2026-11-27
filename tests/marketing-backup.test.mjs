@@ -74,12 +74,14 @@ test("every marketing table is in the backup", () => {
 
 test("an empty database gets everything back, and nothing restored sends by itself", async () => {
 	const { db } = await filled();
+	db.sqlite.exec(`INSERT INTO marketing_settings VALUES ('whatsapp', '{"token":"segredo"}')`);
 	const file = await backup.createBackup(db, NOW);
 	const empty = database();
 	// A fresh install may already have made its own secret.
 	empty.sqlite.exec("INSERT INTO marketing_settings VALUES ('unsubscribe_secret', 'novo')");
 	const restored = await backup.restoreBackup(empty, stream(file));
 	assert.equal(restored.marketing_contacts, 2);
+	assert.equal(one(empty, "SELECT COUNT(*) AS n FROM marketing_settings WHERE key = 'whatsapp'").n, 0);
 	for (const table of ["marketing_contacts", "marketing_consents", "marketing_list_members", "marketing_contact_tags", "marketing_lists", "marketing_api_keys"]) {
 		assert.deepEqual(all(empty, table), all(db, table), table);
 	}

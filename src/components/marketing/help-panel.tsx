@@ -104,6 +104,19 @@ const TOPICS: Topic[] = [
 		],
 	},
 	{
+		title: "WhatsApp (primeira etapa: conexão e teste)",
+		steps: [
+			"No seu Evolution Go, crie uma instância só para o MailLead e leia o QR Code com o número que vai enviar.",
+			"Em WhatsApp, informe o endereço do servidor e o token dessa instância.",
+			"Grave um áudio, ouça e envie para o seu próprio número.",
+		],
+		tips: [
+			"Use o token da instância, nunca a chave geral do servidor.",
+			"O envio dentro dos funis ainda não existe: vem depois do teste.",
+			"O token não entra no backup. Depois de restaurar, cole de novo.",
+		],
+	},
+	{
 		title: "Backup e restauração",
 		tips: [
 			"Em Backup: uma cópia é feita todo dia e ficam as últimas 30. Antes de uma grande mudança, clique em Fazer backup agora.",
@@ -125,7 +138,7 @@ const TOPICS: Topic[] = [
 	{
 		title: "Ainda não existe",
 		tips: [
-			"WhatsApp.",
+			"WhatsApp dentro dos funis.",
 			"Adaptadores prontos para plataformas de venda (Hotmart, Kiwify e outras).",
 			"Teste A/B, pontuação de leads, carrinho abandonado e páginas de captura completas.",
 		],

@@ -6,6 +6,8 @@ const csp = [
 	`script-src 'self' 'unsafe-inline'${scriptEval} https://challenges.cloudflare.com`,
 	"style-src 'self' 'unsafe-inline'",
 	"img-src 'self' data: blob: https:",
+	// blob: lets a recording be heard before it is sent.
+	"media-src 'self' blob:",
 	"font-src 'self' data:",
 	"connect-src 'self' ws: wss: https://challenges.cloudflare.com",
 	// 'self' lets the Drive preview show PDFs and text files in an iframe.
@@ -29,7 +31,8 @@ export function getSecurityHeaders() {
 		{ key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
 		{
 			key: "Permissions-Policy",
-			value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+			// The microphone is for recording WhatsApp audio, and only this app's own pages may ask.
+			value: "camera=(), microphone=(self), geolocation=(), payment=(), usb=()",
 		},
 	];
 }

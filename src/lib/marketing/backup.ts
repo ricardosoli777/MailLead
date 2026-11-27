@@ -43,7 +43,8 @@ export async function createBackup(db: D1Database, now = Date.now()): Promise<Ui
 			const { results } = await db.prepare(`SELECT rowid AS _rowid, * FROM ${table} WHERE rowid > ? ORDER BY rowid LIMIT ${PAGE}`).bind(after).all<Row>();
 			if (!results.length) break;
 			after = Number(results.at(-1)!._rowid);
-			await write(results.map(({ _rowid, ...row }) => `${JSON.stringify({ t: table, r: row })}\n`).join(""));
+			// The WhatsApp token is a credential to another server: it is typed again, never copied.
+			await write(results.filter((row) => !(table === "marketing_settings" && row.key === "whatsapp")).map(({ _rowid, ...row }) => `${JSON.stringify({ t: table, r: row })}\n`).join(""));
 			if (results.length < PAGE) break;
 		}
 	}
