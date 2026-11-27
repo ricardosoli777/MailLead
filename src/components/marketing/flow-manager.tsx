@@ -43,6 +43,25 @@ export function FlowManager() {
 		void load().catch((loadError: Error) => setError(loadError.message));
 	}, [load]);
 
+	// While something is running, the numbers follow by themselves. Only the numbers: what is being typed stays.
+	const live = flows.some((flow) => flow.status === "active" || flow.testing);
+	useEffect(() => {
+		if (!live) return;
+		const refresh = () => {
+			if (document.hidden) return;
+			// A failed round is not worth a message: the next one tries again.
+			void marketingRequest<{ flows: Flow[] }>("/api/marketing/flows")
+				.then((data) => setFlows((before) => (JSON.stringify(before) === JSON.stringify(data.flows) ? before : data.flows)))
+				.catch(() => {});
+		};
+		const timer = setInterval(refresh, 10_000);
+		document.addEventListener("visibilitychange", refresh);
+		return () => {
+			clearInterval(timer);
+			document.removeEventListener("visibilitychange", refresh);
+		};
+	}, [live]);
+
 	const current = flows.find((flow) => flow.id === openId);
 
 	async function create() {
