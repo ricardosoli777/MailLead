@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 	const number = readPhone(form?.get("phone"));
 	if (!number) return fail("Informe o número com DDD, por exemplo 11 99999-9999.", 400);
 	const audio = form?.get("audio");
-	if (audio instanceof File && audio.size > MAX_AUDIO_BYTES) return fail("O áudio pode ter no máximo 5 MB.", 413);
+	if (audio instanceof File && audio.size > MAX_AUDIO_BYTES) return fail("O áudio pode ter no máximo 16 MB.", 413);
 	const config = await readSetting<WhatsAppConfig>(access.db, "whatsapp");
 	if (!config) return fail("Salve o endereço e o token primeiro.", 409);
 	try {

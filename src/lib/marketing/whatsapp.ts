@@ -6,7 +6,8 @@ export type WhatsAppConfig = { url: string; token: string };
 
 export class WhatsAppError extends Error {}
 
-export const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
+// About an hour of voice at the quality the recorder uses.
+export const MAX_AUDIO_BYTES = 16 * 1024 * 1024;
 
 /** The server's address: https only, since the token travels with every request. */
 export function readServerUrl(value: unknown): string | null {
@@ -30,7 +31,7 @@ async function call(config: WhatsAppConfig, path: string, init: RequestInit, req
 	let response: Response;
 	try {
 		// A redirect is refused so the token never follows it to another address.
-		response = await request(`${config.url}${path}`, { ...init, headers: { ...init.headers, apikey: config.token }, redirect: "manual", signal: AbortSignal.timeout(60_000) });
+		response = await request(`${config.url}${path}`, { ...init, headers: { ...init.headers, apikey: config.token }, redirect: "manual", signal: AbortSignal.timeout(180_000) });
 	} catch {
 		throw new WhatsAppError("O servidor do WhatsApp não respondeu. Confira o endereço.");
 	}

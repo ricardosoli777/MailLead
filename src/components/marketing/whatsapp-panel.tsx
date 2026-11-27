@@ -104,7 +104,7 @@ export function WhatsAppPanel() {
 
 			<section className="space-y-3 rounded-3xl bg-white p-6">
 				<h2 className="text-base font-semibold">Gravar e testar</h2>
-				<p className="text-sm text-neutral-500">Grave um áudio curto, ouça e envie para o seu próprio número. O servidor transforma em mensagem de voz.</p>
+				<p className="text-sm text-neutral-500">Grave um áudio, ouça e envie para o seu próprio número. O servidor transforma em mensagem de voz.</p>
 				<AudioRecorder value={audio} onChange={setAudio} />
 				<label className="block space-y-1">
 					<span className="block text-xs font-medium text-neutral-600">Seu número, com DDD</span>

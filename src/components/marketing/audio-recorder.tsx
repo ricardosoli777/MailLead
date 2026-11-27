@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Pause, Play, Trash2, Upload } from "@/components/icons";
 import { MAX_AUDIO_BYTES } from "@/lib/marketing/whatsapp";
 
-const MAX_SECONDS = 120;
+// Enough for a clear voice, and small enough for long recordings.
+const BITS_PER_SECOND = 32_000;
 // OGG where the browser records it; the others are converted by the WhatsApp server on sending.
 const TYPES = [["audio/ogg;codecs=opus", "ogg"], ["audio/webm;codecs=opus", "webm"], ["audio/mp4", "m4a"]] as const;
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -30,9 +31,6 @@ export function AudioRecorder({ value, onChange }: { value: File | null; onChang
 		const timer = setInterval(() => setSeconds((current) => current + 1), 1000);
 		return () => clearInterval(timer);
 	}, [recording]);
-	useEffect(() => {
-		if (recording && seconds >= MAX_SECONDS) recorder.current?.stop();
-	}, [recording, seconds]);
 	// Leaving the screen releases the microphone.
 	useEffect(() => () => recorder.current?.stream.getTracks().forEach((track) => track.stop()), []);
 
@@ -41,9 +39,18 @@ export function AudioRecorder({ value, onChange }: { value: File | null; onChang
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 			const [mimeType, extension] = TYPES.find(([type]) => MediaRecorder.isTypeSupported(type)) ?? ["", "webm"];
-			const next = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+			const next = new MediaRecorder(stream, { audioBitsPerSecond: BITS_PER_SECOND, ...(mimeType && { mimeType }) });
 			const chunks: Blob[] = [];
-			next.ondataavailable = (event) => chunks.push(event.data);
+			let size = 0;
+			next.ondataavailable = (event) => {
+				chunks.push(event.data);
+				size += event.data.size;
+				// No time limit; the recording only stops by itself before the file gets too big to send.
+				if (size > MAX_AUDIO_BYTES - 512 * 1024 && next.state === "recording") {
+					setError("A gravação chegou ao tamanho máximo de envio e foi encerrada.");
+					next.stop();
+				}
+			};
 			next.onstop = () => {
 				stream.getTracks().forEach((track) => track.stop());
 				setRecording(false);
@@ -53,7 +60,7 @@ export function AudioRecorder({ value, onChange }: { value: File | null; onChang
 			recorder.current = next;
 			onChange(null);
 			setSeconds(0);
-			next.start();
+			next.start(1000);
 			setRecording(true);
 		} catch {
 			setError("Não consegui usar o microfone. Libere a permissão no navegador (ícone ao lado do endereço) ou envie um arquivo.");
@@ -67,7 +74,7 @@ export function AudioRecorder({ value, onChange }: { value: File | null; onChang
 					<>
 						<Button type="button" size="sm" variant="destructive" onClick={() => recorder.current?.stop()}><Pause className="h-4 w-4" />Parar</Button>
 						<span className="flex items-center gap-2 text-sm tabular-nums text-red-700" role="timer">
-							<span className="h-2 w-2 animate-pulse rounded-full bg-red-600" />Gravando {clock(seconds)} de {clock(MAX_SECONDS)}
+							<span className="h-2 w-2 animate-pulse rounded-full bg-red-600" />Gravando {clock(seconds)}
 						</span>
 					</>
 				) : (
@@ -78,7 +85,7 @@ export function AudioRecorder({ value, onChange }: { value: File | null; onChang
 							const file = event.target.files?.[0];
 							event.target.value = "";
 							if (!file) return;
-							if (file.size > MAX_AUDIO_BYTES) return setError("O áudio pode ter no máximo 5 MB.");
+							if (file.size > MAX_AUDIO_BYTES) return setError("O áudio pode ter no máximo 16 MB.");
 							setError("");
 							onChange(file);
 						}} />
