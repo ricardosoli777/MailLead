@@ -1,12 +1,12 @@
 # Mudar o MailLead para um domínio novo
 
-Troque `seudominio.com.br` pelo domínio comprado. **Você** = quem é dono das contas. **Claude** = o assistente de código, sempre pedindo autorização antes de mexer em conta ou apagar algo.
+Domínio comprado: `ricardosoares.ia.br` (Registro.br). **Você** = quem é dono das contas. **Claude** = o assistente de código, sempre pedindo autorização antes de mexer em conta ou apagar algo.
 
 | Endereço | Para quê |
 |---|---|
-| `mail.seudominio.com.br` | O app |
-| `seudominio.com.br` | Caixas de e-mail do negócio (`contato@`) |
-| `news.seudominio.com.br` | Só envio de marketing |
+| `maillead.ricardosoares.ia.br` | O app |
+| `ricardosoares.ia.br` | Caixa do negócio: `suporte@` |
+| `news.ricardosoares.ia.br` | Só envio de marketing |
 
 **Não mexer:** `klead.com.br`, o e-mail dele, o CRM e o Evo Go (`go.klead.com.br`). O endereço antigo continua ligado até o novo passar em todos os testes.
 
@@ -15,11 +15,12 @@ Troque `seudominio.com.br` pelo domínio comprado. **Você** = quem é dono das 
 - [ ] **Você:** em Marketing → Backup, baixe um backup.
 
 ## 1. Comprar o domínio
-- [ ] **Você:** `.com.br` no Registro.br; `.com` pode ser na própria Cloudflare.
+- [x] Comprado no Registro.br.
 
 ## 2. Cloudflare: colocar o domínio
-- [ ] **Você:** na **mesma conta** do app, **Add a domain** (plano Free serve para o DNS).
-- [ ] **Você:** se comprou no Registro.br, troque lá os servidores DNS pelos dois que a Cloudflare mostrar.
+- [x] Adicionado na mesma conta do app.
+- [ ] **Você:** no Registro.br, abra o domínio → **Alterar servidores DNS** e coloque os dois que a Cloudflare mostrar.
+- [ ] **Você:** na Cloudflare → DNS → Records, apague os registros de estacionamento que possam ter sido importados: **MX** apontando para `.` e **TXT** `v=spf1 -all`. Com eles o domínio recusa e-mail.
 - [ ] Espere o domínio ficar **Active** (pode levar algumas horas).
 
 ## 3. Cloudflare: permissão do app no domínio novo
@@ -28,32 +29,32 @@ O app usa o segredo `CF_TOKEN` para configurar o e-mail.
 - Editar o token mantém o mesmo valor. Se criar outro, grave você mesmo no Worker. Não cole token no chat.
 
 ## 4. Endereço do app
-- [ ] **Você** (ou Claude, com autorização): Workers & Pages → `mailflare` → Settings → Domains & Routes → **Add** → Custom domain → `mail.seudominio.com.br`.
-- [ ] Na mesma tela, em Variables: se existir `APP_URL`, mude para `https://mail.seudominio.com.br`. Se não existir, crie.
+- [ ] **Você** (ou Claude, com autorização): Workers & Pages → `mailflare` → Settings → Domains & Routes → **Add** → Custom domain → `maillead.ricardosoares.ia.br`.
+- [ ] Na mesma tela, em Variables: se existir `APP_URL`, mude para `https://maillead.ricardosoares.ia.br`. Se não existir, crie.
 - [ ] Abra o endereço novo e entre com a senha.
 - [ ] **Você:** cadastre uma passkey nova e ative a verificação em duas etapas (TOTP) em Settings → Security.
 
 Com `APP_URL` apontando para o novo, links de recuperação de senha e passkeys passam a usar só o endereço novo.
 
 ## 5. Caixas de e-mail do domínio novo
-- [ ] **Você:** no endereço novo, Admin → Domains → **New domain** → `seudominio.com.br`, com os mesmos serviços de envio e recebimento que usa hoje. Pelo Cloudflare, o app configura Email Routing e Email Sending.
+- [ ] **Você:** no endereço novo, Admin → Domains → **New domain** → `ricardosoares.ia.br`, com os mesmos serviços de envio e recebimento que usa hoje. Pelo Cloudflare, o app configura Email Routing e Email Sending.
 - [ ] **Você:** na Cloudflare, em Email Sending, faça o **On-board** do domínio se ele pedir (exige o plano pago de Workers).
 - [ ] **Você:** no domínio expandido em Admin → Domains, configure DKIM e DMARC. Comece o DMARC com `p=none`.
-- [ ] **Você:** crie as caixas (`contato@`, a sua).
+- [ ] **Você:** crie a caixa `suporte@ricardosoares.ia.br`.
 - [ ] Teste: envie para um Gmail e responda de volta.
 
-**Não** cadastre `news.seudominio.com.br` em Admin → Domains: o marketing recusa um subdomínio usado no e-mail do dia a dia.
+**Não** cadastre `news.ricardosoares.ia.br` em Admin → Domains: o marketing recusa um subdomínio usado no e-mail do dia a dia.
 
 ## 6. Amazon SES (marketing)
 A conta já tem produção liberada em `us-east-1` e a chave já está guardada no MailLead. Não precisa de chave nem pedido novo.
 
-- [ ] **Você:** console da AWS, região **us-east-1** → Amazon SES → Identities → **Create identity** → Domain → `news.seudominio.com.br`.
+- [ ] **Você:** console da AWS, região **us-east-1** → Amazon SES → Identities → **Create identity** → Domain → `news.ricardosoares.ia.br`.
   - [ ] Easy DKIM, RSA 2048.
-  - [ ] **Use a custom MAIL FROM domain** → `bounce.news.seudominio.com.br`.
+  - [ ] **Use a custom MAIL FROM domain** → `bounce.news.ricardosoares.ia.br`.
   - [ ] Não marque publicação automática no Route 53.
 - [ ] **Você:** copie os três CNAME de DKIM (não são secretos) e mande para o Claude.
 - [ ] **Claude:** monta o arquivo de importação de DNS.
-- [ ] **Você:** Cloudflare → `seudominio.com.br` → DNS → Records → Import and Export → importe, **com o proxy desmarcado**.
+- [ ] **Você:** Cloudflare → `ricardosoares.ia.br` → DNS → Records → Import and Export → importe, **com o proxy desmarcado**.
 
 Registros esperados:
 
@@ -69,9 +70,9 @@ _dmarc.news                TXT    "v=DMARC1; p=quarantine; adkim=s; aspf=r;"
 - [ ] Espere a AWS mostrar o domínio e o MAIL FROM como **Verified**.
 
 ## 7. MailLead: marketing no endereço novo
-Sempre abrindo `https://mail.seudominio.com.br`.
+Sempre abrindo `https://maillead.ricardosoares.ia.br`.
 
-- [ ] Marketing → Envio: remetente `contato@news.seudominio.com.br`, responder para `contato@seudominio.com.br`, **endereço público** `https://mail.seudominio.com.br`. Salvar.
+- [ ] Marketing → Envio: remetente `suporte@news.ricardosoares.ia.br`, responder para `suporte@ricardosoares.ia.br`, **endereço público** `https://maillead.ricardosoares.ia.br`. Salvar.
 - [ ] **Configurar eventos** (refaz o aviso de devoluções para o endereço novo). Espere ficar confirmado.
 - [ ] **Claude**, com autorização: zerar a contagem de aquecimento. Os testes feitos com o domínio antigo não aquecem o novo.
 - [ ] Todas as verificações em verde → enviar teste e conferir SPF, DKIM e DMARC em **PASS** no Gmail ("Mostrar original").
