@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { flowTestStatus, startFlowTest } from "@/lib/marketing/flow-test";
+import { currentFlowTest, startFlowTest, stopFlowTest } from "@/lib/marketing/flow-test";
 import { requireMarketing } from "@/lib/marketing/server";
 
 type Context = { params: Promise<{ id: string }> };
@@ -7,8 +7,14 @@ type Context = { params: Promise<{ id: string }> };
 export async function GET(request: Request, { params }: Context) {
 	const access = await requireMarketing(request);
 	if (access.error) return access.error;
-	const email = new URL(request.url).searchParams.get("email") ?? "";
-	return NextResponse.json({ test: await flowTestStatus(access.db, (await params).id, email) });
+	return NextResponse.json({ current: await currentFlowTest(access.db, (await params).id) });
+}
+
+export async function DELETE(request: Request, { params }: Context) {
+	const access = await requireMarketing(request);
+	if (access.error) return access.error;
+	await stopFlowTest(access.db, (await params).id);
+	return NextResponse.json({ ok: true });
 }
 
 export async function POST(request: Request, { params }: Context) {

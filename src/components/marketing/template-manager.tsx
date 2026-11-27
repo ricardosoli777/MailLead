@@ -5,10 +5,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { STARTERS } from "@/lib/marketing/starters";
+import { STARTERS, type Starter } from "@/lib/marketing/starters";
 import type { Design, Template } from "@/lib/marketing/types";
 import { marketingRequest } from "./marketing-request";
 import { TemplateEditor } from "./template-editor";
+import { TemplateGallery } from "./template-gallery";
 
 export type Draft = { id: string | null; name: string; subject: string; design: Design };
 
@@ -26,6 +27,13 @@ export function TemplateManager() {
 			.catch((loadError: Error) => setError(loadError.message));
 	}, []);
 	useEffect(load, [load]);
+
+	const use = (starter: Starter) => {
+		const design = structuredClone(starter.design);
+		// The signature already written once is kept.
+		design.footer = structuredClone(templates[0]?.design.footer ?? STARTERS[0].design.footer);
+		setDraft({ id: null, name: starter.name, subject: starter.subject, design });
+	};
 
 	async function remove(template: Template) {
 		if (!window.confirm(`Excluir o modelo "${template.name}"?`)) return;
@@ -47,16 +55,6 @@ export function TemplateManager() {
 				<p className="text-sm text-neutral-500">Crie mensagens com logo, imagens, botões e rodapé. Os modelos salvos também aparecem no compositor.</p>
 			</div>
 			{error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-			<section className="space-y-3 rounded-3xl bg-white p-6">
-				<Label>Começar de um modelo pronto</Label>
-				<div className="flex flex-wrap gap-2">
-					{STARTERS.map((starter) => (
-						<Button key={starter.key} type="button" variant="outline" onClick={() => setDraft({ id: null, name: starter.name, subject: starter.subject, design: structuredClone(starter.design) })}>
-							{starter.name}
-						</Button>
-					))}
-				</div>
-			</section>
 			<section className="space-y-2 rounded-3xl bg-white p-6">
 				<Label htmlFor="marketing-saved">Modelos salvos</Label>
 				{templates.length === 0 && <p className="text-sm text-neutral-500">Nenhum modelo salvo ainda.</p>}
@@ -75,6 +73,10 @@ export function TemplateManager() {
 						</li>
 					))}
 				</ul>
+			</section>
+			<section className="space-y-3 rounded-3xl bg-white p-6">
+				<Label>Modelos prontos</Label>
+				<TemplateGallery onChoose={use} />
 			</section>
 		</div>
 	);

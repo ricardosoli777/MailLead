@@ -8,6 +8,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { APICallError, generateText, type ModelMessage } from "ai";
 import type { AiAnswer, AiDocument, AiFile, AiFunnel, AiMessage, AiProvider } from "./ai-types";
 import { keepAttachedImages, readAnswer } from "./ai-utils";
+import { STARTERS } from "./starters";
 
 export class AiError extends Error {}
 
@@ -85,33 +86,53 @@ function withDocuments(messages: AiMessage[], documents: AiDocument[]): ModelMes
 	return [{ role: "user", content: [...parts, { type: "text", text: first.content }] }, ...rest];
 }
 
-export async function askAi(input: { provider: AiProvider; key: string; model: string; messages: AiMessage[]; tags: string[]; funnel: AiFunnel | null; files?: AiFile[]; documents?: AiDocument[] }, request?: typeof fetch): Promise<AiAnswer> {
-	const settings = { apiKey: input.key, fetch: request };
-	const model = input.provider === "anthropic" ? createAnthropic(settings)(input.model)
-		: input.provider === "openai" ? createOpenAI(settings).responses(input.model)
-			: createOpenAICompatible({ name: "gemini", baseURL: GEMINI, ...settings }).chatModel(input.model);
+type Account = { provider: AiProvider; key: string; model: string };
+
+async function write(account: Account, instructions: string, messages: ModelMessage[], request?: typeof fetch): Promise<string> {
+	const settings = { apiKey: account.key, fetch: request };
+	const model = account.provider === "anthropic" ? createAnthropic(settings)(account.model)
+		: account.provider === "openai" ? createOpenAI(settings).responses(account.model)
+			: createOpenAICompatible({ name: "gemini", baseURL: GEMINI, ...settings }).chatModel(account.model);
 	let result: { text: string; finishReason: string };
 	try {
 		result = await generateText({
 			model,
-			instructions: system(input),
-			messages: withDocuments(input.messages, input.documents ?? []),
+			instructions,
+			messages,
 			maxOutputTokens: 16_000,
 			maxRetries: 1,
 			abortSignal: AbortSignal.timeout(180_000),
 			providerOptions: {
 				openai: { store: false },
-				...(WITH_FALLBACK.test(input.model) ? { anthropic: { fallbacks: "default" } } : {}),
+				...(WITH_FALLBACK.test(account.model) ? { anthropic: { fallbacks: "default" } } : {}),
 			},
 		});
 	} catch (error) {
 		// The provider's message may quote the key back.
-		const detail = (error instanceof Error ? error.message : "").replaceAll(input.key, "…");
+		const detail = (error instanceof Error ? error.message : "").replaceAll(account.key, "…");
 		if (APICallError.isInstance(error)) throw failure(error.statusCode, detail);
 		throw new AiError("A IA não respondeu. Tente de novo ou escolha outro modelo.");
 	}
 	if (result.finishReason === "content-filter") throw new AiError("O modelo se recusou a escrever esse conteúdo. Reformule o pedido.");
 	if (result.finishReason === "length") throw new AiError("A resposta ficou grande demais e veio cortada. Peça um funil menor.");
-	const answer = readAnswer(result.text);
+	return result.text;
+}
+
+export async function askAi(input: Account & { messages: AiMessage[]; tags: string[]; funnel: AiFunnel | null; files?: AiFile[]; documents?: AiDocument[] }, request?: typeof fetch): Promise<AiAnswer> {
+	const answer = readAnswer(await write(input, system(input), withDocuments(input.messages, input.documents ?? []), request));
 	return answer.funnel ? { ...answer, funnel: keepAttachedImages(answer.funnel, input.files ?? [], input.funnel) } : answer;
+}
+
+/** Which ready-made e-mail fits what the person wants to do. The answer is one of ours, or nothing. */
+export async function pickStarter(input: Account & { purpose: string }, request?: typeof fetch): Promise<{ key: string; reason: string }> {
+	const catalog = STARTERS.map((item) => `${item.key}: ${item.name}. ${item.use}`).join("\n");
+	const answer = await write(input, `Você escolhe o modelo de e-mail pronto que melhor serve ao pedido. Responda APENAS com JSON: {"key": "...", "reason": "uma frase curta em português do Brasil"}. "key" é obrigatoriamente uma das chaves abaixo.\n${catalog}`, [{ role: "user", content: input.purpose }], request);
+	let value: { key?: unknown; reason?: unknown } = {};
+	try {
+		value = JSON.parse(answer.slice(answer.indexOf("{"), answer.lastIndexOf("}") + 1));
+	} catch {
+		// Handled below.
+	}
+	if (!STARTERS.some((item) => item.key === value.key)) throw new AiError("A IA não escolheu um modelo. Tente descrever de outro jeito.");
+	return { key: value.key as string, reason: typeof value.reason === "string" ? value.reason.slice(0, 300) : "" };
 }

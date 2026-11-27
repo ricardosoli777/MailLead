@@ -33,8 +33,13 @@ export type Flow = FlowDraft & {
 	id: string;
 	status: FlowStatus;
 	counts: { active: number; done: number; goal: number; exited: number };
+	/** A test is open for this funnel. */
+	testing: boolean;
 	stats: Record<string, StepStats>;
 };
+
+/** The test left open for a funnel. */
+export type FlowTestOpen = { email: string; name: string; phone: string; test: FlowTestStatus };
 
 /** Where a test of the funnel is. */
 export type FlowTestStatus = { now: string; done: boolean; steps: { name: string; text: string; tone: "ok" | "wait" | "error" }[] };

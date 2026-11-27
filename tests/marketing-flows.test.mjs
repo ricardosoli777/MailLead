@@ -421,10 +421,16 @@ test("the owner can test a live funnel with their own data, again and again", as
 		await tick(start + 1000);
 		await flows.runFlows(db, start + 60_000, 100, sender);
 		const result = await testing.flowTestStatus(db, id, "eu@gmail.com");
+		// The test is still there after leaving the screen.
+		assert.equal((await testing.currentFlowTest(db, id)).email, "eu@gmail.com");
+		assert.equal((await flows.listFlows(db))[0].testing, true);
 		assert.equal(result.done, true);
 		assert.deepEqual(result.steps.map((step) => step.text), ["enviado", "enviado"]);
 		assert.deepEqual(tags(), ["fim"]);
 	}
 	assert.equal(sent.length, 2);
 	assert.deepEqual(heard, ["5511999990000", "5511999990000"]);
+	await testing.stopFlowTest(db, id);
+	assert.equal(await testing.currentFlowTest(db, id), null);
+	assert.equal((await flows.listFlows(db))[0].testing, false);
 });

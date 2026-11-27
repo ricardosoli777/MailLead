@@ -50,8 +50,8 @@ test("T4: a design without a complete footer is refused", () => {
 	assert.ok(parseDesign({ blocks: [], footer }).design);
 });
 
-test("T5 and T6: the four starter templates render to HTML and plain text", () => {
-	assert.deepEqual(STARTERS.map((s) => s.name), ["Comercial", "Proposta", "Comunicado", "Newsletter"]);
+test("T5 and T6: every starter template renders to HTML and plain text", () => {
+	for (const key of ["comercial", "proposta", "comunicado", "newsletter"]) assert.ok(STARTERS.some((s) => s.key === key), key);
 	for (const starter of STARTERS) {
 		assert.ok(parseDesign(starter.design).design);
 		assert.doesNotMatch(renderHtml(starter.design) + renderText(starter.design), /\{\{/);

@@ -8,11 +8,11 @@ import { Input } from "@/components/ui/input";
 import type { FlowDraft, FlowNode, StepStats, StepType } from "@/lib/marketing/flows-types";
 import { MAX_WAIT, STEP_LABELS, WAIT_UNITS } from "@/lib/marketing/flows-utils";
 import { renderHtml } from "@/lib/marketing/render";
-import { STARTERS } from "@/lib/marketing/starters";
 import type { Template } from "@/lib/marketing/types";
 import { AudioRecorder } from "./audio-recorder";
 import { STEP_STYLE } from "./flow-nodes";
 import { marketingRequest } from "./marketing-request";
+import { TemplateGallery } from "./template-gallery";
 
 const SELECT = "h-10 w-full rounded-md border border-neutral-200 bg-white px-3 text-sm disabled:opacity-60";
 export type Option = { id: string; name: string };
@@ -118,7 +118,7 @@ type StepDialogProps = {
 };
 
 function EmailFields({ step, templates, readOnly, onChange, onCreateContent, onEditContent }: StepDialogProps & { step: Extract<FlowNode, { type: "email" }> }) {
-	const [starter, setStarter] = useState("");
+	const [browsing, setBrowsing] = useState(false);
 	const template = templates.find((item) => item.id === step.templateId);
 	return (
 		<>
@@ -136,12 +136,10 @@ function EmailFields({ step, templates, readOnly, onChange, onCreateContent, onE
 					<div className="space-y-2">
 						<p className="text-xs text-neutral-500">Ainda sem conteúdo. Pode desenhar o funil inteiro primeiro e escrever depois.</p>
 						<div className="flex flex-wrap gap-2">
-							<select className={`${SELECT} !w-auto flex-1`} aria-label="Começar de" value={starter} onChange={(event) => setStarter(event.target.value)}>
-								<option value="">Em branco</option>
-								{STARTERS.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
-							</select>
-							<Button type="button" onClick={() => onCreateContent(starter)}>Escrever e-mail</Button>
+							<Button type="button" aria-expanded={browsing} onClick={() => setBrowsing(!browsing)}>Escolher modelo pronto</Button>
+							<Button type="button" variant="outline" onClick={() => onCreateContent("")}>Escrever do zero</Button>
 						</div>
+						{browsing && <TemplateGallery onChoose={(starter) => onCreateContent(starter.key)} />}
 					</div>
 				)}
 				<Field label={template ? "Trocar por outro modelo" : "Ou usar um modelo salvo"}>

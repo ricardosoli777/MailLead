@@ -340,7 +340,7 @@ function Editor({ flow, lists, templates: initialTemplates, tags, onClose, onCha
 				{dirty && <span className="text-xs text-amber-700">alterações não salvas</span>}
 				<div className="ml-auto flex flex-wrap gap-2">
 					<Button type="button" size="sm" variant="ghost" className="text-red-600" disabled={busy} onClick={() => void remove()}>Apagar</Button>
-					<Button type="button" size="sm" variant="outline" onClick={() => setOpened({ kind: "test" })}>Testar</Button>
+					<Button type="button" size="sm" variant="outline" onClick={() => setOpened({ kind: "test" })}>{flow.testing && <span aria-hidden className="mr-1 h-2 w-2 rounded-full bg-blue-600" />}{flow.testing ? "Ver teste" : "Testar"}</Button>
 					{readOnly ? (
 						<Button type="button" size="sm" variant="outline" disabled={busy} onClick={pause}>Pausar para editar</Button>
 					) : (
@@ -453,7 +453,7 @@ function Editor({ flow, lists, templates: initialTemplates, tags, onClose, onCha
 
 			{message && !content && <p role="status" className={`fixed inset-x-4 top-16 z-[140] mx-auto w-fit max-w-xl rounded-xl px-4 py-3 text-sm shadow-lg ${message.error ? "bg-red-50 text-red-800" : "bg-green-50 text-green-800"}`} onClick={() => setMessage(null)}>{message.text}</p>}
 
-			{opened?.kind === "test" && <FlowTestDialog flowId={flow.id} active={status === "active"} needsPhone={graph.nodes.some((node) => node.type === "whatsapp")} onClose={() => setOpened(null)} />}
+			{opened?.kind === "test" && <FlowTestDialog flowId={flow.id} active={status === "active"} needsPhone={graph.nodes.some((node) => node.type === "whatsapp")} onClose={() => setOpened(null)} onChanged={() => void onChanged()} />}
 			{opened?.kind === "start" && <StartDialog draft={draft} lists={lists} tags={tags} readOnly={readOnly} onChange={patchDraft} onClose={() => setOpened(null)} />}
 			{opened?.kind === "pick" && <PickDialog types={PALETTE} onClose={() => setOpened(null)} onPick={(type) => add(type, opened.at ?? positionBelow(graph, opened.from, opened.branch), opened)} />}
 			{opened?.kind === "pickLine" && <PickDialog types={PALETTE.filter((type) => type !== "exit")} onClose={() => setOpened(null)} onPick={(type) => addLine(type, opened.line)} />}

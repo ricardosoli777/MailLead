@@ -92,7 +92,7 @@ export function FlowManager() {
 			{flows.map((flow) => (
 				<article key={flow.id} className="flex flex-wrap items-center justify-between gap-2 rounded-3xl bg-white p-6">
 					<div>
-						<h3 className="text-sm font-medium">{flow.name} <span className={`ml-1 rounded-full px-2 py-1 text-xs ${STATUS[flow.status][1]}`}>{STATUS[flow.status][0]}</span></h3>
+						<h3 className="text-sm font-medium">{flow.name} <span className={`ml-1 rounded-full px-2 py-1 text-xs ${STATUS[flow.status][1]}`}>{STATUS[flow.status][0]}</span>{flow.testing && <span className="ml-1 rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700">teste aberto</span>}</h3>
 						<p className="text-xs text-neutral-500">{flow.counts.active} no funil · {flow.counts.done} concluíram · {flow.counts.goal} no objetivo · {flow.counts.exited} saíram</p>
 					</div>
 					<Button type="button" size="sm" variant="outline" onClick={() => setOpenId(flow.id)}>Abrir fluxo</Button>

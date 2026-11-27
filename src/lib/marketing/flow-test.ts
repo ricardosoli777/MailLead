@@ -4,13 +4,16 @@
  */
 import { importContacts } from "./contacts";
 import { isValidEmail, normalizeEmail } from "./contacts-utils";
-import type { FlowTestStatus } from "./flows-types";
+import { dropSetting, readSetting, writeSetting } from "./engine";
+import type { FlowTestOpen, FlowTestStatus } from "./flows-types";
 import { firstStep, readGraph, STEP_LABELS } from "./flows-utils";
 import { readPhone } from "./whatsapp";
 
 type Row = { name: string; list_id: string; steps: string; status: string; trigger_tag: string; goal_tag: string };
 const getFlow = (db: D1Database, id: string) => db.prepare("SELECT name, list_id, steps, status, trigger_tag, goal_tag FROM marketing_flows WHERE id = ?").bind(id).first<Row>();
 const prefix = (flowId: string) => `flow:${flowId}:`;
+/** Who is testing this funnel, kept until "Encerrar teste" so it survives leaving the screen. */
+const testKey = (flowId: string) => `flow_test:${flowId}`;
 
 export async function startFlowTest(db: D1Database, flowId: string, input: { name?: unknown; email?: unknown; phone?: unknown }, now = Date.now()): Promise<{ error: string } | { error: null }> {
 	const flow = await getFlow(db, flowId);
@@ -52,7 +55,25 @@ export async function startFlowTest(db: D1Database, flowId: string, input: { nam
 		...(flow.trigger_tag ? [db.prepare("INSERT OR IGNORE INTO marketing_contact_tags (contact_id, tag, created_at) VALUES (?, ?, ?)").bind(contact.id, flow.trigger_tag, now)] : []),
 		db.prepare("INSERT INTO marketing_flow_runs (flow_id, contact_id, step_id, status, next_check_at, created_at) VALUES (?, ?, ?, 'active', ?, ?)").bind(flowId, contact.id, first, now, now),
 	]);
+	await writeSetting(db, testKey(flowId), contact.id);
 	return { error: null };
+}
+
+/** The test that is open for this funnel, with where it stands now. */
+export async function currentFlowTest(db: D1Database, flowId: string): Promise<FlowTestOpen | null> {
+	const contactId = await readSetting<string>(db, testKey(flowId));
+	if (!contactId) return null;
+	const person = await db.prepare(`SELECT c.email, c.name, COALESCE(w.phone, '') AS phone FROM marketing_contacts c LEFT JOIN marketing_whatsapp w ON w.contact_id = c.id WHERE c.id = ?`)
+		.bind(contactId).first<{ email: string; name: string; phone: string }>();
+	const test = person && (await flowTestStatus(db, flowId, person.email));
+	return person && test ? { ...person, test } : null;
+}
+
+/** Forget the test. What had not left yet for that person does not leave any more. */
+export async function stopFlowTest(db: D1Database, flowId: string): Promise<void> {
+	const contactId = await readSetting<string>(db, testKey(flowId));
+	if (contactId) await db.prepare("UPDATE marketing_flow_runs SET status = 'exited' WHERE flow_id = ? AND contact_id = ? AND status = 'active'").bind(flowId, contactId).run();
+	await dropSetting(db, testKey(flowId));
 }
 
 const STOPPED: Record<string, string> = { done: "Chegou ao fim do funil.", goal: "Atingiu o objetivo e saiu.", exited: "Saiu do funil (descadastro ou bloqueio)." };

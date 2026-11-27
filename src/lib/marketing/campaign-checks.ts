@@ -1,4 +1,5 @@
 /** R9: what to look at before sending. These are warnings; the person decides. */
+import { unfilled } from "./starters";
 
 const MAX_LINKS = 15;
 /** Gmail cuts messages near 102 KB, hiding the footer and its unsubscribe link. */
@@ -6,6 +7,8 @@ const CLIP_BYTES = 100 * 1024;
 
 export function contentWarnings(subject: string, html: string, text: string): string[] {
 	const warnings: string[] = [];
+	const left = unfilled(`${subject}\n${text}`);
+	if (left) warnings.push(`Falta preencher: ${left}`);
 	const letters = subject.replace(/[^\p{L}]/gu, "");
 	if (subject.length > 70) warnings.push("O assunto é longo e será cortado no celular (mais de 70 caracteres).");
 	if (letters.length > 5 && letters === letters.toUpperCase()) warnings.push("O assunto está todo em maiúsculas, o que parece spam.");

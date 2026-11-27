@@ -28,3 +28,5 @@ Funis prontos e objetivo vieram da comparação com o ActiveCampaign ([research.
 
 ## Testar
 O botão **Testar** (funil ativo) cadastra o próprio administrador como um lead (`POST /api/marketing/flows/[id]/test`, com confirmação de que os dados são dele), apaga o teste anterior daquela pessoa naquele funil e mostra cada envio e erro. As regras de envio continuam valendo (aquecimento, 8h às 20h no WhatsApp).
+
+O teste fica aberto mesmo se você fechar a janela ou mudar de tela: o funil mostra **teste aberto** e o botão vira **Ver teste**. Só **Encerrar teste** o remove (e o que ainda não saiu para você deixa de sair).

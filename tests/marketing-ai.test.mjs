@@ -18,6 +18,8 @@ async function bundle(entry, outfile) {
 const ai = await bundle("src/lib/marketing/ai.ts", "ai.mjs");
 const utils = await bundle("src/lib/marketing/ai-utils.ts", "utils.mjs");
 const flows = await bundle("src/lib/marketing/flows-utils.ts", "flows.mjs");
+const starters = await bundle("src/lib/marketing/starters.ts", "starters.mjs");
+const render = await bundle("src/lib/marketing/render.ts", "render.mjs");
 const docx = await bundle("src/lib/marketing/docx.ts", "docx.mjs");
 
 const mail = (name) => ({ type: "email", name, subject: `Assunto ${name}`, blocks: [{ type: "text", text: "Olá" }] });
@@ -127,4 +129,17 @@ test("OpenAI and Gemini receive the PDF too", async () => {
 		await assert.rejects(ai.askAi({ provider, key: "k", model, messages: [{ role: "user", content: "oi" }], tags: [], funnel: null, documents: [{ name: "g.pdf", kind: "pdf", data }] }, request), /400/);
 		assert.ok(sent.includes(`data:application/pdf;base64,${data}`), provider);
 	}
+});
+
+test("every ready-made e-mail is valid, unique and flagged until it is filled in", () => {
+	const keys = starters.STARTERS.map((item) => item.key);
+	assert.equal(new Set(keys).size, keys.length);
+	for (const item of starters.STARTERS) {
+		assert.ok(!("error" in render.parseDesign(item.design)), item.key);
+		assert.ok(starters.CATEGORIES.some((category) => category.id === item.category), item.key);
+		assert.ok(item.use && item.subject, item.key);
+	}
+	assert.equal(starters.unfilled("Olá [NOME DO PRODUTO]"), "[NOME DO PRODUTO]");
+	assert.equal(starters.unfilled("Botão (https://exemplo.com)"), "https://exemplo.com");
+	assert.equal(starters.unfilled("Veja [Aqui Está](https://site.com) e {{nome|você}} [1]"), null);
 });

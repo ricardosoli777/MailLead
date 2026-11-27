@@ -17,7 +17,8 @@ const TOPICS: Topic[] = [
 	{
 		title: "Criar um modelo de e-mail",
 		steps: [
-			"Em Modelos, comece de um pronto (comercial, proposta, comunicado, newsletter) ou crie o seu.",
+			"Em Modelos, escolha um pronto pelo uso (boas-vindas, conteúdo, eventos, vendas, clientes, reativação, avisos) ou escreva para que é e clique em IA escolhe.",
+			"Troque o que está em [MAIÚSCULAS] e o endereço exemplo.com. O funil não ativa enquanto sobrar algum.",
 			"Monte com blocos: título, texto, imagem, botão, vídeo ou áudio (viram capa com link) e divisor.",
 			"Preencha o rodapé (empresa, contato e por que a pessoa recebe). Sem ele o modelo não é salvo.",
 			"Salve e envie um teste para você.",

@@ -6,7 +6,8 @@ import { newId } from "@/lib/ids";
 import { PROVIDER_SQL } from "./campaigns";
 import type { Flow, FlowDraft, FlowStatus } from "./flows-types";
 import { emptyGraph, firstStep, graphErrors, parseGraph, readGraph, successors, WAIT_UNITS, type Node } from "./flows-utils";
-import { parseDesign } from "./render";
+import { parseDesign, renderText } from "./render";
+import { unfilled } from "./starters";
 
 const RUNS_PER_TICK = 100;
 const MAX_MOVES_PER_RUN = 20;
@@ -96,6 +97,8 @@ export async function activateFlow(db: D1Database, id: string, now = Date.now())
 		if (!subject) return `Informe o assunto do e-mail "${template.name}".`;
 		const parsed = parseDesign(JSON.parse(template.design));
 		if ("error" in parsed) return `${template.name}: ${parsed.error}`;
+		const left = unfilled(`${subject}\n${renderText(parsed.design)}`);
+		if (left) return `Falta preencher o e-mail "${template.name}": ${left}`;
 		mails.push({ id: campaignId(id, step.id), subject, design: JSON.stringify(parsed.design) });
 	}
 	const audios = graph.nodes.flatMap((step) => (step.type === "whatsapp" ? [step.audioId] : []));
@@ -265,13 +268,14 @@ export async function runFlows(db: D1Database, now = Date.now(), limit = RUNS_PE
 }
 
 export async function listFlows(db: D1Database): Promise<Flow[]> {
-	const [flows, runs, here, mails, audios] = await Promise.all([
+	const [flows, runs, here, mails, audios, tests] = await Promise.all([
 		db.prepare("SELECT * FROM marketing_flows ORDER BY created_at DESC LIMIT 50").all<Row>(),
 		db.prepare("SELECT flow_id, status, COUNT(*) AS n FROM marketing_flow_runs GROUP BY flow_id, status").all<{ flow_id: string; status: "active" | "done" | "goal" | "exited"; n: number }>(),
 		db.prepare("SELECT flow_id, step_id, COUNT(*) AS n FROM marketing_flow_runs WHERE status = 'active' GROUP BY flow_id, step_id").all<{ flow_id: string; step_id: string; n: number }>(),
 		db.prepare(`SELECT s.campaign_id, COUNT(s.sent_at) AS sent, COUNT(s.opened_at) AS opened, COUNT(s.clicked_at) AS clicked
 			FROM marketing_sends s JOIN marketing_campaigns p ON p.id = s.campaign_id WHERE p.kind = 'flow' GROUP BY s.campaign_id`).all<{ campaign_id: string; sent: number; opened: number; clicked: number }>(),
 		db.prepare("SELECT flow_id, step_id, COUNT(*) AS sent FROM marketing_whatsapp_sends WHERE status = 'sent' GROUP BY flow_id, step_id").all<{ flow_id: string; step_id: string; sent: number }>(),
+		db.prepare("SELECT key FROM marketing_settings WHERE key >= 'flow_test:' AND key < 'flow_test;'").all<{ key: string }>(),
 	]);
 	return flows.results.map((row) => {
 		const graph = readGraph(row.steps);
@@ -287,6 +291,6 @@ export async function listFlows(db: D1Database): Promise<Flow[]> {
 				clicked: mail?.clicked ?? 0,
 			};
 		}
-		return { id: row.id, name: row.name, listId: row.list_id, triggerTag: row.trigger_tag, goalTag: row.goal_tag, graph, status: row.status, counts, stats };
+		return { id: row.id, name: row.name, listId: row.list_id, triggerTag: row.trigger_tag, goalTag: row.goal_tag, graph, status: row.status, counts, stats, testing: tests.results.some((item) => item.key === `flow_test:${row.id}`) };
 	});
 }
