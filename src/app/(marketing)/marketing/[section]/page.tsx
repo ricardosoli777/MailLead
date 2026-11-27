@@ -9,6 +9,7 @@ import { CaptureManager } from "@/components/marketing/capture-manager";
 import { ContactManager } from "@/components/marketing/contact-manager";
 import { FlowManager } from "@/components/marketing/flow-manager";
 import { HelpPanel } from "@/components/marketing/help-panel";
+import { ListManager } from "@/components/marketing/list-manager";
 import { MARKETING_SECTIONS, type MarketingSection } from "@/components/marketing/marketing-sections";
 import { SendingPanel } from "@/components/marketing/sending-panel";
 import { TemplateManager } from "@/components/marketing/template-manager";
@@ -23,7 +24,8 @@ function Section({ id }: { id: MarketingSection }) {
 		case "funis": return <FlowManager />;
 		case "campanhas": return <CampaignManager />;
 		case "modelos": return <TemplateManager />;
-		case "contatos": return <ContactManager onFormCreated={editForm} />;
+		case "contatos": return <ContactManager />;
+		case "listas": return <ListManager onFormCreated={editForm} />;
 		case "captura": return <CaptureManager editId={formId} onEdit={editForm} />;
 		case "envio": return <SendingPanel />;
 		case "whatsapp": return <WhatsAppPanel />;

@@ -8,7 +8,7 @@ import { SidebarScaffold } from "@/components/sidebar-scaffold";
 import { useSidebar } from "@/components/sidebar-state";
 import { MARKETING_SECTIONS, type MarketingSection } from "./marketing-sections";
 
-const ICONS: Record<MarketingSection, typeof Send> = { funis: Route, campanhas: Send, modelos: FileText, contatos: Users, captura: Inbox, envio: Send, whatsapp: Smartphone, ia: Bot, backup: DatabaseBackup, ajuda: HelpCircle };
+const ICONS: Record<MarketingSection, typeof Send> = { funis: Route, campanhas: Send, modelos: FileText, contatos: Users, listas: Plus, captura: Inbox, envio: Send, whatsapp: Smartphone, ia: Bot, backup: DatabaseBackup, ajuda: HelpCircle };
 
 export function MarketingNav({ onNavigate }: { onNavigate?: () => void }) {
 	const { minimal } = useSidebar();
@@ -18,7 +18,7 @@ export function MarketingNav({ onNavigate }: { onNavigate?: () => void }) {
 	};
 	const groups: [string, MarketingSection[]][] = [
 		["Criar", ["funis", "campanhas", "modelos"]],
-		["Público", ["contatos", "captura"]],
+		["Público", ["contatos", "listas", "captura"]],
 		["Configurações", ["envio", "whatsapp", "ia", "backup"]],
 	];
 	return (

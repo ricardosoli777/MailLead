@@ -9,7 +9,7 @@ const TOPICS: Topic[] = [
 		steps: [
 			"Envio: confira o remetente e se todas as verificações estão certas.",
 			"Modelos: crie o e-mail que vai usar.",
-			"Contatos: crie uma lista. O formulário dela abre sozinho.",
+			"Nova lista: crie uma lista. O formulário dela abre sozinho.",
 			"Captura: ajuste o formulário e cole o código na sua página.",
 			"Campanhas (um disparo) ou Funis (sequência automática).",
 		],
@@ -32,7 +32,7 @@ const TOPICS: Topic[] = [
 	{
 		title: "Listas, contatos e consentimento",
 		steps: [
-			"Em Contatos, crie a lista (ex.: Clientes).",
+			"Em Nova lista, crie a lista (ex.: Clientes).",
 			"Para trazer pessoas que já tem, importe um CSV com a coluna \"email\" (e \"nome\") e informe como elas aceitaram.",
 			"Use etiquetas para separar perfis (ex.: comprou, interessado).",
 		],

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,14 +43,14 @@ function ConsentFields({ value, onChange }: { value: ConsentForm; onChange: (val
 	);
 }
 
-export function ContactManager({ onFormCreated }: { onFormCreated: (formId: string) => void }) {
+export function ContactManager() {
 	const [lists, setLists] = useState<MailingList[]>([]);
 	const [contacts, setContacts] = useState<ContactSummary[]>([]);
 	const [total, setTotal] = useState(0);
 	const [filter, setFilter] = useState({ q: "", list: "", tag: "", status: "", offset: 0 });
 	const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
 	const [busy, setBusy] = useState(false);
-	const [listName, setListName] = useState("");
+	const [loaded, setLoaded] = useState(false);
 	const [person, setPerson] = useState({ email: "", name: "", listId: "" });
 	const [personConsent, setPersonConsent] = useState(emptyConsent);
 	const [file, setFile] = useState<File | null>(null);
@@ -67,6 +68,7 @@ export function ContactManager({ onFormCreated }: { onFormCreated: (formId: stri
 		])
 			.then(([listData, contactData]) => {
 				setLists(listData.lists);
+				setLoaded(true);
 				setContacts(contactData.contacts);
 				setTotal(contactData.total);
 			})
@@ -86,21 +88,6 @@ export function ContactManager({ onFormCreated }: { onFormCreated: (formId: stri
 			setBusy(false);
 		}
 	}
-
-	const createList = () => run(async () => {
-		const { formId } = await marketingRequest<{ formId: string }>("/api/marketing/lists", json("POST", { name: listName }));
-		onFormCreated(formId);
-		setListName("");
-		return "Lista criada.";
-	});
-
-	const removeList = (list: MailingList) => {
-		if (!window.confirm(`Excluir a lista "${list.name}"? Os contatos continuam cadastrados.`)) return;
-		void run(async () => {
-			await marketingRequest(`/api/marketing/lists/${list.id}`, { method: "DELETE" });
-			return "Lista excluída.";
-		});
-	};
 
 	const addPerson = () => run(async () => {
 		const consent = personConsent.source.trim() || personConsent.text.trim() ? personConsent : undefined;
@@ -166,22 +153,7 @@ export function ContactManager({ onFormCreated }: { onFormCreated: (formId: stri
 		<div className="space-y-6">
 			{message?.text && <p role="status" className={`text-sm ${message.error ? "text-red-600" : "text-green-700"}`}>{message.text}</p>}
 
-			<section className="space-y-3 rounded-3xl bg-white p-6">
-				<Label>Listas</Label>
-				<ul className="flex flex-wrap gap-2">
-					{lists.map((list) => (
-						<li key={list.id} className="flex items-center gap-2 rounded-full border border-neutral-200 px-3 py-1 text-sm">
-							{list.name} <span className="text-neutral-500">{list.members}</span>
-							<button type="button" aria-label={`Excluir lista ${list.name}`} className="text-neutral-400 hover:text-red-600" onClick={() => removeList(list)}>×</button>
-						</li>
-					))}
-					{lists.length === 0 && <li className="text-sm text-neutral-500">Crie a primeira lista para receber contatos.</li>}
-				</ul>
-				<div className="flex flex-wrap items-end gap-2">
-					<Field label="Nova lista" value={listName} placeholder="Ex.: Clientes" onChange={setListName} />
-					<Button type="button" variant="outline" disabled={busy || !listName.trim()} onClick={() => void createList()}>Criar lista</Button>
-				</div>
-			</section>
+			{loaded && lists.length === 0 && <p className="text-sm text-neutral-500">Você ainda não tem lista. <Link className="text-blue-700 underline" href="/marketing/listas">Criar nova lista</Link></p>}
 
 			<details className="rounded-3xl bg-white p-6">
 				<summary className="cursor-pointer text-sm font-medium text-neutral-900">Adicionar um contato</summary>

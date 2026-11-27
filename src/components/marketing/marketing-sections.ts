@@ -4,6 +4,7 @@ export const MARKETING_SECTIONS = [
 	{ id: "campanhas", label: "Campanhas" },
 	{ id: "modelos", label: "Modelos" },
 	{ id: "contatos", label: "Contatos" },
+	{ id: "listas", label: "Nova lista" },
 	{ id: "captura", label: "Captura" },
 	{ id: "envio", label: "Envio" },
 	{ id: "whatsapp", label: "WhatsApp" },
