@@ -9,3 +9,7 @@
 - Enviado ao provedor: a conversa, a proposta atual e os nomes das etiquetas. Nenhum contato.
 - Modelos vêm da lista do próprio provedor; nenhum nome fica fixo no código.
 - Nos modelos Claude que aceitam, uma recusa é repassada pela API a outro modelo (`fallbacks: "default"`).
+
+## Voz e anexos
+- **Microfone:** ditado pelo reconhecimento de voz do próprio navegador (`SpeechRecognition`, Chrome e Edge; o botão some onde não existe). O navegador pode enviar o áudio ao serviço de voz do fabricante. O texto fica na caixa para revisar antes de enviar.
+- **Anexos:** imagens (2 MB) e PDF (10 MB) vão para `marketing/assets/`, com endereço público e impossível de adivinhar. A IA recebe nome e endereço, não o conteúdo. Imagem vira bloco de imagem; PDF vira botão. Endereços de imagem que o modelo inventar são descartados.

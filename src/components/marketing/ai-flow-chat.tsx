@@ -1,12 +1,14 @@
 "use client";
 
 // A conversation that ends in a draft funnel with its e-mails written. Nothing is activated here.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Mic, Paperclip, Square, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import type { AiAnswer, AiFunnel, AiMessage, AiStep } from "@/lib/marketing/ai-types";
+import type { AiAnswer, AiFile, AiFunnel, AiMessage, AiStep } from "@/lib/marketing/ai-types";
 import { AI_PROVIDERS } from "@/lib/marketing/ai-utils";
 import { readAiSettings, type AiSettings } from "./ai-store";
 import { marketingRequest } from "./marketing-request";
+import { useDictation } from "./use-dictation";
 
 const EXAMPLES = "Ex.: Funil de boas-vindas para quem baixou meu e-book de receitas. Quero 3 e-mails e, no último, convidar para o curso (https://meusite.com/curso).";
 
@@ -22,6 +24,8 @@ function Steps({ steps }: { steps: AiStep[] }) {
 									<summary className="cursor-pointer"><strong>E-mail:</strong> {step.subject}</summary>
 									<div className="mt-2 space-y-2 text-neutral-700">
 										{step.blocks.map((block, position) => (block.type === "divider" ? <hr key={position} />
+											// eslint-disable-next-line @next/next/no-img-element
+											: block.type === "image" ? <img key={position} src={block.url} alt={block.alt} className="max-h-40 rounded-lg" />
 											: block.type === "button" ? <p key={position} className="break-all text-blue-700">Botão &quot;{block.label}&quot; → {block.url}</p>
 												: <p key={position} className={`whitespace-pre-wrap ${block.type === "heading" ? "font-semibold" : ""}`}>{block.text}</p>))}
 									</div>
@@ -51,6 +55,29 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 	const [error, setError] = useState("");
 	const [busy, setBusy] = useState<"" | "asking" | "creating">("");
 
+	const [files, setFiles] = useState<AiFile[]>([]);
+	const [uploading, setUploading] = useState(false);
+	const picker = useRef<HTMLInputElement>(null);
+	const dictation = useDictation((words) => setDraft((current) => `${current}${current && !/\s$/.test(current) ? " " : ""}${words}`.slice(0, 4000)), setError);
+
+	async function attach(chosen: File[]) {
+		setError("");
+		setUploading(true);
+		try {
+			for (const file of chosen.slice(0, 10 - files.length)) {
+				const form = new FormData();
+				form.set("file", file);
+				form.set("allow", "pdf");
+				const { url } = await marketingRequest<{ url: string }>("/api/marketing/assets", { method: "POST", body: form });
+				setFiles((current) => [...current, { name: file.name, url, kind: /\.pdf$/i.test(file.name) || file.type === "application/pdf" ? "pdf" : "image" }]);
+			}
+		} catch (uploadError) {
+			setError((uploadError as Error).message);
+		} finally {
+			setUploading(false);
+		}
+	}
+
 	useEffect(() => {
 		void readAiSettings().then(setSettings).catch(() => setSettings({ active: "", providers: {} }));
 	}, []);
@@ -61,14 +88,15 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 
 	async function ask() {
 		const content = draft.trim();
-		if (!content || !ready) return;
+		if (!content || !ready || uploading) return;
+		dictation.stop();
 		const next: AiMessage[] = [...messages, { role: "user", content }];
 		setMessages(next);
 		setDraft("");
 		setError("");
 		setBusy("asking");
 		try {
-			const answer = await marketingRequest<AiAnswer>("/api/marketing/ai/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider, key: config.key, model: config.model, messages: next, funnel }) });
+			const answer = await marketingRequest<AiAnswer>("/api/marketing/ai/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider, key: config.key, model: config.model, messages: next, funnel, files }) });
 			setMessages([...next, { role: "assistant", content: answer.reply }]);
 			if (answer.funnel) setFunnel(answer.funnel);
 		} catch (askError) {
@@ -88,6 +116,7 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 			const { id } = await marketingRequest<{ id: string }>("/api/marketing/ai/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ funnel, listId }) });
 			setMessages([]);
 			setFunnel(null);
+			setFiles([]);
 			await onCreated(id);
 		} catch (createError) {
 			setError((createError as Error).message);
@@ -121,6 +150,7 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 						<Button type="button" variant="ghost" disabled={!!busy} onClick={() => {
 							setFunnel(null);
 							setMessages([]);
+							setFiles([]);
 						}}>Começar de novo</Button>
 					</div>
 				</div>
@@ -135,7 +165,37 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 						void ask();
 					}
 				}} />
-				<Button type="submit" disabled={!ready || !!busy || !draft.trim()}>Enviar</Button>
+				{files.length > 0 && (
+					<ul className="flex flex-wrap gap-2" aria-label="Arquivos anexados">
+						{files.map((file) => (
+							<li key={file.url} className="flex items-center gap-2 rounded-full border border-neutral-200 py-1 pl-1 pr-2 text-xs">
+								{file.kind === "image"
+									// eslint-disable-next-line @next/next/no-img-element
+									? <img src={file.url} alt="" className="h-7 w-7 rounded-full object-cover" />
+									: <span className="rounded-full bg-neutral-100 px-2 py-1 font-medium">PDF</span>}
+								<span className="max-w-40 truncate">{file.name}</span>
+								<button type="button" aria-label={`Remover ${file.name}`} onClick={() => setFiles((current) => current.filter((item) => item.url !== file.url))}><X className="h-3.5 w-3.5" /></button>
+							</li>
+						))}
+					</ul>
+				)}
+				<div className="flex flex-wrap items-center gap-2">
+					<Button type="button" size="sm" variant="outline" aria-label="Anexar arquivo" title="Anexar imagem ou PDF" disabled={uploading || files.length >= 10} onClick={() => picker.current?.click()}><Paperclip className="h-4 w-4" /></Button>
+					<input ref={picker} type="file" multiple accept="image/png,image/jpeg,image/gif,application/pdf" aria-label="Arquivos para os e-mails" className="hidden" onChange={(event) => {
+						const chosen = [...(event.target.files ?? [])];
+						event.target.value = "";
+						void attach(chosen);
+					}} />
+					{dictation.supported && (
+						<Button type="button" size="sm" variant={dictation.listening ? "destructive" : "outline"} aria-label={dictation.listening ? "Parar de ouvir" : "Falar"} aria-pressed={dictation.listening} title="Falar em vez de digitar" onClick={dictation.toggle}>
+							{dictation.listening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+						</Button>
+					)}
+					<Button type="submit" disabled={!ready || !!busy || uploading || !draft.trim()}>Enviar</Button>
+					{uploading && <span role="status" className="text-xs text-neutral-500">Enviando arquivo…</span>}
+					{dictation.listening && <span role="status" className="text-xs text-red-700">Ouvindo… fale e clique no quadrado para parar.</span>}
+				</div>
+				<p className="text-xs text-neutral-500">Anexos: imagens (PNG, JPG, GIF até 2 MB) e PDF (até 10 MB). Eles ficam em um endereço público para aparecer nos e-mails; não anexe documentos sigilosos.</p>
 			</form>
 		</section>
 	);

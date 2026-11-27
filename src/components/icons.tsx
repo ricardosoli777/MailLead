@@ -97,6 +97,7 @@ import {
 	MusicIcon as HugeMusicIcon,
 	PaletteIcon as HugePaletteIcon,
 	PaperclipIcon as HugePaperclipIcon,
+	Mic01Icon as HugeMicIcon,
 	PauseCircleIcon as HugePauseCircleIcon,
 	PauseIcon as HugePauseIcon,
 	Note01Icon as HugeNote01Icon,
@@ -284,6 +285,7 @@ export const MoreHorizontal = createIcon(HugeMoreHorizontalIcon, "MoreHorizontal
 export const MoreVertical = createIcon(HugeMoreVerticalIcon, "MoreVertical");
 export const Music = createIcon(HugeMusicIcon, "Music");
 export const Palette = createIcon(HugePaletteIcon, "Palette");
+export const Mic = createIcon(HugeMicIcon, "Mic");
 export const Paperclip = createIcon(HugePaperclipIcon, "Paperclip");
 export const Pause = createIcon(HugePauseIcon, "Pause");
 export const PauseCircle = createIcon(HugePauseCircleIcon, "PauseCircle");

@@ -1,5 +1,5 @@
 /** What the model may propose, rebuilt field by field: its answer is untrusted text. */
-import type { AiAnswer, AiBlock, AiFunnel, AiProvider, AiStep } from "./ai-types";
+import type { AiAnswer, AiBlock, AiFile, AiFunnel, AiProvider, AiStep } from "./ai-types";
 import { MAX_STEPS, fromTree, newStepId, type TreeStep } from "./flows-utils";
 import type { FlowGraph } from "./flows-types";
 
@@ -21,6 +21,10 @@ function readBlocks(value: unknown): AiBlock[] {
 		if (raw.type === "heading" || raw.type === "text") {
 			const body = text(raw.text, 4000);
 			return body ? [{ type: raw.type, text: body }] : [];
+		}
+		if (raw.type === "image") {
+			const url = text(raw.url, 500);
+			return /^https?:\/\/[^\s]+$/i.test(url) ? [{ type: "image", url, alt: text(raw.alt, 200) }] : [];
 		}
 		if (raw.type === "button") {
 			const label = text(raw.label, 80);
@@ -60,6 +64,29 @@ export function readFunnel(input: unknown): AiFunnel | null {
 	const read = steps(value.steps, 0);
 	if (!read.length) return null;
 	return { name: text(value.name, 100) || "Funil criado com IA", triggerTag: tag(value.triggerTag), goalTag: tag(value.goalTag), steps: read };
+}
+
+export function readFiles(input: unknown): AiFile[] {
+	return list(input).slice(0, 10).flatMap((raw): AiFile[] => {
+		const url = text(raw.url, 500);
+		const name = text(raw.name, 120);
+		return name && /^https?:\/\/[^\s]+$/i.test(url) ? [{ name, url, kind: raw.kind === "pdf" ? "pdf" : "image" }] : [];
+	});
+}
+
+/** The model may show only pictures that were really attached, never an address it made up. */
+export function keepAttachedImages(funnel: AiFunnel, files: AiFile[], kept: AiFunnel | null = null): AiFunnel {
+	const allowed = new Set(files.filter((file) => file.kind === "image").map((file) => file.url));
+	const gather = (steps: AiStep[]) => steps.forEach((step) => {
+		if (step.type === "email") step.blocks.forEach((block) => block.type === "image" && allowed.add(block.url));
+		if (step.type === "condition") [step.yes, step.no].forEach(gather);
+	});
+	if (kept) gather(kept.steps);
+	const clean = (steps: AiStep[]): AiStep[] => steps.map((step): AiStep => {
+		if (step.type === "email") return { ...step, blocks: step.blocks.filter((block) => block.type !== "image" || allowed.has(block.url)) };
+		return step.type === "condition" ? { ...step, yes: clean(step.yes), no: clean(step.no) } : step;
+	});
+	return { ...funnel, steps: clean(funnel.steps) };
 }
 
 /** Takes the JSON out of the answer. Anything else is shown as a plain reply. */

@@ -70,3 +70,10 @@ test("asks Claude with the user's key and reads the proposal; errors never repea
 	const refuse = async () => new Response(JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "bad key segredo-123" } }), { status: 400, headers: { "content-type": "application/json" } });
 	await assert.rejects(ai.askAi(input, refuse), (error) => error.name === "Error" && !error.message.includes("segredo-123") && /400/.test(error.message));
 });
+
+test("only attached pictures can appear in an e-mail", () => {
+	const files = utils.readFiles([{ name: "capa.png", url: "https://x.test/capa", kind: "image" }, { name: "x", url: "javascript:1" }]);
+	assert.equal(files.length, 1);
+	const funnel = utils.readFunnel({ steps: [{ type: "email", name: "a", blocks: [{ type: "image", url: "https://x.test/capa" }, { type: "image", url: "https://inventada.test/i.png" }, { type: "text", text: "oi" }] }] });
+	assert.deepEqual(utils.keepAttachedImages(funnel, files).steps[0].blocks.map((block) => block.url ?? block.type), ["https://x.test/capa", "text"]);
+});

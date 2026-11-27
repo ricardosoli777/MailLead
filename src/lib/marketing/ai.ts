@@ -6,8 +6,8 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { APICallError, generateText } from "ai";
-import type { AiAnswer, AiFunnel, AiMessage, AiProvider } from "./ai-types";
-import { readAnswer } from "./ai-utils";
+import type { AiAnswer, AiFile, AiFunnel, AiMessage, AiProvider } from "./ai-types";
+import { keepAttachedImages, readAnswer } from "./ai-utils";
 
 export class AiError extends Error {}
 
@@ -43,7 +43,7 @@ export async function listAiModels(provider: AiProvider, key: string, request: t
 	return [...new Set(writes)].sort().reverse();
 }
 
-function system(context: { tags: string[]; funnel: AiFunnel | null }): string {
+function system(context: { tags: string[]; funnel: AiFunnel | null; files?: AiFile[] }): string {
 	return `Você ajuda a criar funis de e-mail no MailLead, em português do Brasil. Os e-mails vão somente para pessoas que se cadastraram e aceitaram receber.
 
 Responda APENAS com um objeto JSON, sem texto fora dele:
@@ -52,6 +52,7 @@ Quando já houver informação suficiente (o que é oferecido, para quem e o obj
 {"name": "...", "triggerTag": "", "goalTag": "", "steps": [...]}
 Passos, na ordem em que acontecem:
 {"type": "email", "name": "nome interno", "subject": "assunto", "preheader": "frase de prévia", "blocks": [{"type": "heading", "text": "..."}, {"type": "text", "text": "..."}, {"type": "button", "label": "...", "url": "https://..."}]}
+Um bloco de imagem é {"type": "image", "url": "...", "alt": "descrição"}.
 {"type": "wait", "amount": 2, "unit": "days"}  (unit: "hours" ou "days")
 {"type": "condition", "test": "clicked", "tag": "", "yes": [...], "no": [...]}  (test: "opened", "clicked" ou "tag"; abertura e clique só depois de um e-mail)
 {"type": "tag", "action": "add", "tag": "interessado"}
@@ -63,11 +64,13 @@ Regras:
 - Para o nome da pessoa use {{nome|tudo bem}}. Não escreva rodapé nem descadastro: o sistema já coloca.
 - Texto direto, sem promessas enganosas, sem assunto em letras maiúsculas.
 - Ao ajustar uma proposta existente, devolva o funil completo outra vez.
+- Arquivos anexados pelo usuário: use cada um no e-mail em que fizer sentido. Imagem vira bloco "image"; PDF vira botão com o endereço dele. Você não vê o conteúdo dos arquivos, só o nome: se não souber o que são, pergunte.
+Anexos: ${context.files?.length ? JSON.stringify(context.files) : "nenhum"}.
 Etiquetas já usadas: ${context.tags.join(", ") || "nenhuma"}.
 Proposta atual: ${context.funnel ? JSON.stringify(context.funnel) : "nenhuma"}`;
 }
 
-export async function askAi(input: { provider: AiProvider; key: string; model: string; messages: AiMessage[]; tags: string[]; funnel: AiFunnel | null }, request?: typeof fetch): Promise<AiAnswer> {
+export async function askAi(input: { provider: AiProvider; key: string; model: string; messages: AiMessage[]; tags: string[]; funnel: AiFunnel | null; files?: AiFile[] }, request?: typeof fetch): Promise<AiAnswer> {
 	const settings = { apiKey: input.key, fetch: request };
 	const model = input.provider === "anthropic" ? createAnthropic(settings)(input.model)
 		: input.provider === "openai" ? createOpenAI(settings).responses(input.model)
@@ -94,5 +97,6 @@ export async function askAi(input: { provider: AiProvider; key: string; model: s
 	}
 	if (result.finishReason === "content-filter") throw new AiError("O modelo se recusou a escrever esse conteúdo. Reformule o pedido.");
 	if (result.finishReason === "length") throw new AiError("A resposta ficou grande demais e veio cortada. Peça um funil menor.");
-	return readAnswer(result.text);
+	const answer = readAnswer(result.text);
+	return answer.funnel ? { ...answer, funnel: keepAttachedImages(answer.funnel, input.files ?? [], input.funnel) } : answer;
 }
