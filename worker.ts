@@ -46,6 +46,7 @@ import { runPromotionsBackfill } from "@/lib/promotions/backfill";
 import { runCalendarReminders } from "./src/lib/calendar/reminders";
 import { handleDavRequest, isDavPath } from "./src/lib/dav/handler";
 import { runMarketingSending } from "./src/lib/marketing/run";
+import { saveBackup as saveMarketingBackup } from "./src/lib/marketing/backup";
 import { runDeliverabilityDaily } from "./src/lib/deliverability/daily";
 import { guardMtaStsHost, isMtaStsHost } from "./src/lib/deliverability/mta-sts";
 export { RealtimeHub } from "./src/lib/realtime/hub";
@@ -187,6 +188,7 @@ export default {
 		ctx.waitUntil(runAgentMaintenance(env));
 		ctx.waitUntil(runAutoUpdate(env));
 		if (controller.cron !== "0 2 * * *") ctx.waitUntil(runMarketingSending(env).catch((error) => console.error("Marketing sending failed", error)));
+		if (controller.cron === "0 2 * * *" && env.MARKETING_DB) ctx.waitUntil(saveMarketingBackup(env.MARKETING_DB, env.BUCKET).catch((error) => console.error("Marketing backup failed", error)));
 		ctx.waitUntil(runTrashRetention(env, new Date(controller.scheduledTime)));
 		ctx.waitUntil(runFollowUpReminders(env, new Date(controller.scheduledTime)));
 		ctx.waitUntil(runCalendarReminders(env, new Date(controller.scheduledTime)));

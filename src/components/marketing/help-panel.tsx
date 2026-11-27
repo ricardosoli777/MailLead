@@ -102,6 +102,15 @@ const TOPICS: Topic[] = [
 		],
 	},
 	{
+		title: "Backup e restauração",
+		tips: [
+			"Em Backup: uma cópia é feita todo dia e ficam as últimas 30. Antes de uma grande mudança, clique em Fazer backup agora.",
+			"Baixe uma cópia de vez em quando e guarde fora do MailLead. O arquivo contém dados dos contatos.",
+			"Restaurar só acrescenta o que falta. Não desfaz descadastros nem exclusões a pedido, e não envia nada sozinho: funis e campanhas voltam pausados.",
+			"Imagens dos modelos ficam no armazenamento de arquivos, fora desta cópia.",
+		],
+	},
+	{
 		title: "Meu e-mail não saiu. O que ver?",
 		tips: [
 			"Envio: alguma verificação está pendente ou o disjuntor pausou?",
