@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { loadGeneralSettings, saveGeneralSettings } from "./utils";
+import { LoginEmailCard } from "./LoginEmailCard";
 
 export default function GeneralSettingsPage() {
 	const { t } = useLanguage();
@@ -102,5 +103,6 @@ export default function GeneralSettingsPage() {
 				<Button type="submit" disabled={!loaded || davSaving}>{davSaving ? t("common.saving") : t("general.save")}</Button>
 			</form></CardContent>
 		</Card>
+		<LoginEmailCard />
 	</div>;
 }

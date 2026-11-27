@@ -153,6 +153,7 @@ export const stepUpActionSchema = z.enum([
 	"admin.password_reset",
 	"admin.recovery_link",
 	"admin.forwarding_email",
+	"admin.login_email",
 	"profile.recovery_email",
 	"routing.forward",
 	"webhook.change",
