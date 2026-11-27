@@ -25,7 +25,7 @@ export async function startFlowTest(db: D1Database, flowId: string, input: { nam
 	const typed = String(input.phone ?? "").trim();
 	const phone = typed ? readPhone(typed) : null;
 	if (typed && !phone) return { error: "Informe o WhatsApp com DDD, por exemplo 11 99999-9999." };
-	if (!phone && graph.nodes.some((node) => node.type === "whatsapp")) return { error: "Este funil manda áudio: informe o seu WhatsApp." };
+	if (!phone && graph.nodes.some((node) => node.type === "whatsapp" || node.type === "whatsapp_text")) return { error: "Este funil usa WhatsApp: informe o seu número." };
 
 	const name = String(input.name ?? "").trim().slice(0, 120);
 	const report = await importContacts(db, [{ line: 1, email, name, fields: {} }], { listId: flow.list_id, consent: { source: "teste do funil", text: "Cadastro de teste feito pelo administrador com os próprios dados.", consentedAt: now }, origin: "teste do funil", now });
@@ -91,7 +91,7 @@ export async function flowTestStatus(db: D1Database, flowId: string, address: st
 	]);
 	const steps: FlowTestStatus["steps"] = [];
 	for (const node of [...readGraph(flow.steps).nodes].sort((a, b) => a.y - b.y || a.x - b.x)) {
-		if (node.type !== "email" && node.type !== "whatsapp") continue;
+		if (node.type !== "email" && node.type !== "whatsapp" && node.type !== "whatsapp_text") continue;
 		const sent = node.type === "email"
 			? mails.results.find((item) => item.campaign_id === prefix(flowId) + node.id)
 			: audios.results.find((item) => item.step_id === node.id);
@@ -105,7 +105,7 @@ export async function flowTestStatus(db: D1Database, flowId: string, address: st
 	if (run.status === "active") {
 		const at = readGraph(flow.steps).nodes.find((node) => node.id === run.step_id);
 		if (at?.type === "wait" && run.wake_at) now = `Esperando até ${new Date(run.wake_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}.`;
-		else if (at?.type === "whatsapp") now = "Esperando para mandar o áudio. Ele sai das 8h às 20h, com o WhatsApp conectado.";
+		else if (at?.type === "whatsapp" || at?.type === "whatsapp_text") now = "Esperando para mandar no WhatsApp. Ele sai das 8h às 20h, com o WhatsApp conectado.";
 		else if (at?.type === "email") now = "Esperando o e-mail sair.";
 	}
 	return { now, done: run.status !== "active", steps };

@@ -2,9 +2,10 @@ export type Block =
 	| { type: "heading"; text: string }
 	| { type: "text"; text: string }
 	| { type: "image"; url: string; alt: string; link?: string }
-	| { type: "button"; label: string; url: string }
+	/** `color` is this button's own; without it the template's accent is used. */
+	| { type: "button"; label: string; url: string; color?: string }
 	/** Video or audio: mail apps rarely play media, so this is a cover image and a button to a link. */
-	| { type: "media"; kind: "video" | "audio"; url: string; imageUrl?: string; label: string }
+	| { type: "media"; kind: "video" | "audio"; url: string; imageUrl?: string; label: string; color?: string }
 	| { type: "divider" };
 
 /** Who sends. `company` may be empty when a person (`firstName`) signs instead. */

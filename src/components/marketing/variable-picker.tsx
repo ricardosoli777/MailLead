@@ -22,13 +22,14 @@ const GROUPS = [
 	{ label: "Outros", items: [["Ano atual", "{{ano}}"], ["Link de descadastro", "{{link_descadastro}}"]] },
 ];
 
-export function VariablePicker({ label, onPick }: { label: string; onPick: (code: string) => void }) {
+/** `email={false}` leaves out what only exists in an e-mail. */
+export function VariablePicker({ label, onPick, email = true }: { label: string; onPick: (code: string) => void; email?: boolean }) {
 	return (
 		<select className="h-8 max-w-full rounded-md border border-neutral-200 bg-white px-2 text-xs text-neutral-600" aria-label={`Inserir variável em ${label}`} value="" onChange={(event) => event.target.value && onPick(event.target.value)}>
 			<option value="">+ Inserir variável</option>
 			{GROUPS.map((group) => (
 				<optgroup key={group.label} label={group.label}>
-					{group.items.map(([name, code]) => <option key={code} value={code}>{name}</option>)}
+					{group.items.filter(([, code]) => email || code !== "{{link_descadastro}}").map(([name, code]) => <option key={code} value={code}>{name}</option>)}
 				</optgroup>
 			))}
 		</select>

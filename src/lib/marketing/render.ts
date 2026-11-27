@@ -1,3 +1,4 @@
+import { ctaStyle, isColor } from "@/lib/email/cta";
 import { cleanRich, richHtml, richText } from "./rich-footer";
 import { MAX_BLOCKS, MAX_TEXT, type Block, type Design } from "./types";
 import { unsubscribeHeaders } from "./unsubscribe";
@@ -65,7 +66,7 @@ function image(url: string, alt: string): string {
 }
 
 function button(label: string, url: string, accent: string): string {
-	return `<a href="${esc(url)}" style="display:inline-block;background-color:${accent};color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 28px;border-radius:8px">${esc(label)}</a>`;
+	return `<a href="${esc(url)}" style="${ctaStyle(accent)}">${esc(label)}</a>`;
 }
 
 function renderBlock(block: Block, accent: string, fill: (value: string) => string): string {
@@ -83,7 +84,7 @@ function renderBlock(block: Block, accent: string, fill: (value: string) => stri
 		}
 		case "button": {
 			const url = safeUrl(block.url);
-			return url && block.label.trim() ? row(`<div style="text-align:center">${button(fill(block.label), url, accent)}</div>`, "16px 32px") : "";
+			return url && block.label.trim() ? row(`<div style="text-align:center">${button(fill(block.label), url, isColor(block.color) ? block.color : accent)}</div>`, "16px 32px") : "";
 		}
 		case "media": {
 			const url = safeUrl(block.url);
@@ -91,7 +92,7 @@ function renderBlock(block: Block, accent: string, fill: (value: string) => stri
 			const label = fill(block.label) || (block.kind === "video" ? "Assistir ao vídeo" : "Ouvir o áudio");
 			const cover = safeUrl(block.imageUrl, { images: true });
 			const picture = cover ? `<a href="${esc(url)}">${image(cover, label)}</a><br>` : "";
-			return row(`<div style="text-align:center">${picture}${button(`▶ ${label}`, url, accent)}</div>`, "16px 32px");
+			return row(`<div style="text-align:center">${picture}${button(`▶ ${label}`, url, isColor(block.color) ? block.color : accent)}</div>`, "16px 32px");
 		}
 		case "divider":
 			return row(`<hr style="border:0;border-top:1px solid #dadce0;margin:0">`);
@@ -185,6 +186,8 @@ export function renderMarketingEmail(design: Design, subject: string, variables:
 
 const str = (value: unknown, max = MAX_TEXT) => (typeof value === "string" ? value.slice(0, max) : "");
 
+const colorOf = (value: unknown) => (isColor(value) ? { color: value } : {});
+
 /** Rebuilds a design from untrusted JSON, keeping only known fields. Returns an error message when it cannot be saved. */
 export function parseDesign(input: unknown): { design: Design } | { error: string } {
 	const value = (input ?? {}) as { accent?: unknown; preheader?: unknown; blocks?: unknown; footer?: Record<string, unknown> };
@@ -201,10 +204,10 @@ export function parseDesign(input: unknown): { design: Design } | { error: strin
 				blocks.push({ type: "image", url: str(raw.url, 2000), alt: str(raw.alt, 300), link: str(raw.link, 2000) });
 				break;
 			case "button":
-				blocks.push({ type: "button", label: str(raw.label, 200), url: str(raw.url, 2000) });
+				blocks.push({ type: "button", label: str(raw.label, 200), url: str(raw.url, 2000), ...colorOf(raw.color) });
 				break;
 			case "media":
-				blocks.push({ type: "media", kind: raw.kind === "audio" ? "audio" : "video", url: str(raw.url, 2000), imageUrl: str(raw.imageUrl, 2000), label: str(raw.label, 200) });
+				blocks.push({ type: "media", kind: raw.kind === "audio" ? "audio" : "video", url: str(raw.url, 2000), imageUrl: str(raw.imageUrl, 2000), label: str(raw.label, 200), ...colorOf(raw.color) });
 				break;
 			case "divider":
 				blocks.push({ type: "divider" });

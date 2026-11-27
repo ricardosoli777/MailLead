@@ -4,9 +4,10 @@
  */
 import { newId } from "@/lib/ids";
 import { PROVIDER_SQL } from "./campaigns";
-import type { Flow, FlowDraft, FlowStatus } from "./flows-types";
+import type { Flow, FlowDraft, FlowStatus, FlowStep } from "./flows-types";
 import { emptyGraph, firstStep, graphErrors, parseGraph, readGraph, successors, WAIT_UNITS, type Node } from "./flows-utils";
-import { parseDesign, renderText } from "./render";
+import { readFooter } from "./footer";
+import { applyVariables, parseDesign, renderText, senderVariables } from "./render";
 import { unfilled } from "./starters";
 
 const RUNS_PER_TICK = 100;
@@ -21,8 +22,10 @@ export const WHATSAPP_PER_5_MINUTES = 5;
 export const WHATSAPP_PER_DAY = 100;
 const STALE_CLAIM_MS = 15 * 60 * 1000;
 
-/** What the funnel needs to send audio. Without it, people wait at the audio step. */
-export type WhatsAppSender = { connected: () => Promise<boolean>; send: (phone: string, audioId: string) => Promise<void> };
+/** What the funnel needs for WhatsApp: `send` is an audio. Without it, people wait at the step. */
+export type WhatsAppSender = { connected: () => Promise<boolean>; send: (phone: string, audioId: string) => Promise<void>; text: (phone: string, message: string) => Promise<void> };
+type WhatsAppStep = Extract<FlowStep, { type: "whatsapp" | "whatsapp_text" }>;
+const isWhatsApp = (step: FlowStep): step is WhatsAppStep => step.type === "whatsapp" || step.type === "whatsapp_text";
 
 /** 8h to 20h in Brasília (UTC-3, no daylight saving). */
 const daytime = (now: number) => {
@@ -102,7 +105,11 @@ export async function activateFlow(db: D1Database, id: string, now = Date.now())
 		mails.push({ id: campaignId(id, step.id), subject, design: JSON.stringify(parsed.design) });
 	}
 	const audios = graph.nodes.flatMap((step) => (step.type === "whatsapp" ? [step.audioId] : []));
-	if (audios.length && !(await db.prepare("SELECT 1 AS ok FROM marketing_settings WHERE key = 'whatsapp'").first())) return "Conecte o WhatsApp em Configurações > WhatsApp antes de ativar.";
+	for (const step of graph.nodes) {
+		const left = isWhatsApp(step) ? unfilled(step.message ?? "") : null;
+		if (left) return `Falta preencher uma mensagem de WhatsApp: ${left}`;
+	}
+	if (graph.nodes.some(isWhatsApp) && !(await db.prepare("SELECT 1 AS ok FROM marketing_settings WHERE key = 'whatsapp'").first())) return "Conecte o WhatsApp em Configurações > WhatsApp antes de ativar.";
 	for (const audioId of audios) {
 		if (!(await db.prepare("SELECT 1 AS ok FROM marketing_audio WHERE id = ?").bind(audioId).first())) return "Um áudio usado no funil não foi encontrado. Grave de novo.";
 	}
@@ -170,13 +177,14 @@ async function reachGoals(db: D1Database): Promise<void> {
 type Run = { flow_id: string; contact_id: string; step_id: string | null; wake_at: number | null; last_send_id: string | null };
 
 /** True when the person may move on; false keeps them at this step for a later pass. */
-async function sendAudio(db: D1Database, run: Run, step: { id: string; audioId: string }, audio: Audio, now: number): Promise<boolean> {
+async function sendWhatsApp(db: D1Database, run: Run, step: WhatsAppStep, audio: Audio, now: number): Promise<boolean> {
 	const key = [run.flow_id, step.id, run.contact_id] as const;
 	const done = await db.prepare("SELECT status, claimed_at FROM marketing_whatsapp_sends WHERE flow_id = ? AND step_id = ? AND contact_id = ?").bind(...key).first<{ status: string; claimed_at: number }>();
 	// A send cut in the middle may have left, so it is never repeated.
 	if (done) return done.status !== "sending" || now - done.claimed_at > STALE_CLAIM_MS;
 	const claim = (status: string, error = "") => db.prepare("INSERT OR IGNORE INTO marketing_whatsapp_sends (flow_id, step_id, contact_id, status, error, claimed_at) VALUES (?, ?, ?, ?, ?, ?)").bind(...key, status, error, now).run();
-	const who = await db.prepare("SELECT phone FROM marketing_whatsapp WHERE contact_id = ? AND opted_out_at IS NULL").bind(run.contact_id).first<{ phone: string }>();
+	const who = await db.prepare("SELECT w.phone, c.name, c.email, c.fields FROM marketing_whatsapp w JOIN marketing_contacts c ON c.id = w.contact_id WHERE w.contact_id = ? AND w.opted_out_at IS NULL")
+		.bind(run.contact_id).first<{ phone: string; name: string; email: string; fields: string }>();
 	// Only whoever authorised WhatsApp receives; the others follow the funnel without it.
 	if (!who) {
 		await claim("skipped", "sem autorização de WhatsApp");
@@ -189,10 +197,16 @@ async function sendAudio(db: D1Database, run: Run, step: { id: string; audioId: 
 	audio.left--;
 	const finish = (status: string, error: string, sentAt: number | null) => db.prepare("UPDATE marketing_whatsapp_sends SET status = ?, error = ?, sent_at = ? WHERE flow_id = ? AND step_id = ? AND contact_id = ?").bind(status, error, sentAt, ...key).run();
 	try {
-		await audio.sender.send(who.phone, step.audioId);
+		const sender = audio.sender;
+		const footer = await readFooter(db);
+		const message = applyVariables(step.message ?? "", { ...(JSON.parse(who.fields || "{}") as Record<string, string>), nome: who.name, email: who.email, ...(footer ? senderVariables(footer) : {}) }).trim();
+		const parts = message ? [() => sender.text(who.phone, message)] : [];
+		if (step.type === "whatsapp") parts[step.messageFirst === false ? "unshift" : "push"](() => sender.send(who.phone, step.audioId));
+		if (!parts.length) throw new Error("Mensagem vazia.");
+		for (const part of parts) await part();
 		await finish("sent", "", now);
 	} catch (error) {
-		console.error("WhatsApp funnel audio failed", error);
+		console.error("WhatsApp funnel send failed", error);
 		await finish("failed", String((error as Error).message).slice(0, 300), null);
 	}
 	return true;
@@ -219,8 +233,8 @@ async function advance(db: D1Database, run: Run, nodes: Map<string, Node>, audio
 			if (send.status === "pending" || send.status === "sending") break;
 			lastSend = send.id;
 			stepId = node.next;
-		} else if (step.type === "whatsapp") {
-			if (!(await sendAudio(db, run, step, audio, now))) break;
+		} else if (isWhatsApp(step)) {
+			if (!(await sendWhatsApp(db, run, step, audio, now))) break;
 			stepId = node.next;
 		} else if (step.type === "wait") {
 			if (wakeAt === null) wakeAt = now + step.amount * WAIT_UNITS[step.unit].ms;

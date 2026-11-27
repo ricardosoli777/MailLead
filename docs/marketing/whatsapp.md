@@ -17,6 +17,10 @@ Somente para quem se cadastrou e aceitou receber no WhatsApp. Sem disparo em mas
 - **Ritmo.** 5 por passagem do cron, 100 em 24 h, das 8h às 20h de Brasília, com 3 a 8 s entre um e outro. Fora disso, ou com a instância desconectada, a pessoa espera no passo.
 - A API e os webhooks não registram aceite de WhatsApp.
 
+## Mensagem escrita
+
+O passo **Texto no WhatsApp** manda só a mensagem; o passo de áudio aceita uma mensagem junto, antes ou depois. Valem as variáveis do lead e dos dados do rodapé. A autorização, o horário e o ritmo são os mesmos do áudio.
+
 ## Falta
 - "SAIR" automático (exige o webhook da instância do MailLead apontando para cá). Hoje é o botão Parar WhatsApp no contato.
 - Texto escrito pelo WhatsApp no funil.

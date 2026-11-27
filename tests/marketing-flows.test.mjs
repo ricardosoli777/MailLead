@@ -500,3 +500,34 @@ test("the footer written in the editor keeps its formatting, and nothing else ge
 	assert.doesNotMatch(out.text, /Descadastre-se aqui: https[^\n]*\n\nDescadastre/);
 	assert.ok(render.parseDesign({ blocks: [], footer: { html: "<div><br></div>" } }).error);
 });
+
+test("a written WhatsApp message goes alone, or before or after the audio, with the person's data", async () => {
+	const steps = [
+		{ id: "step0001", type: "whatsapp_text", message: "Oi {{nome|amigo}}, sou {{remetente_empresa}}" },
+		{ id: "step0002", type: "whatsapp", audioId: "aud1", message: "antes", messageFirst: true },
+		{ id: "step0003", type: "whatsapp", audioId: "aud1", message: "depois", messageFirst: false },
+	];
+	const { db, id, join: enter } = await setup(steps);
+	db.sqlite.prepare("INSERT INTO marketing_audio (id, name, content_type, size, created_at) VALUES ('aud1', 'a.ogg', 'audio/ogg', 1, 0)").run();
+	await engine.writeSetting(db, "whatsapp", { url: "https://go.example.com", token: "t" });
+	await engine.writeSetting(db, "footer", { company: "Loja", contact: "", disclaimer: "" });
+	assert.equal(await flows.activateFlow(db, id, NOW), null);
+	const heard = [];
+	const sender = { connected: async () => true, send: async () => heard.push("audio"), text: async (_phone, message) => heard.push(message) };
+	await enter("ana@gmail.com", NOW);
+	db.sqlite.prepare("INSERT INTO marketing_whatsapp (contact_id, phone, source, text, consented_at) SELECT id, '5511999990000', 'f', 't', 0 FROM marketing_contacts").run();
+	const name = db.sqlite.prepare("SELECT name FROM marketing_contacts").get().name;
+	await flows.runFlows(db, NOW + 1, 100, sender);
+	assert.deepEqual(heard, [`Oi ${name || "amigo"}, sou Loja`, "antes", "audio", "audio", "depois"]);
+});
+
+test("a text step needs its message, and a button keeps its own colour with readable letters", async () => {
+	assert.ok(tree.graphErrors(tree.fromTree([{ id: "step0001", type: "whatsapp_text", message: " " }])).step0001);
+	const render = await bundle("src/lib/marketing/render.ts", "cta.mjs");
+	const footer = { company: "Loja", contact: "c", disclaimer: "d" };
+	const parsed = render.parseDesign({ accent: "#0b57d0", footer, blocks: [{ type: "button", label: "A", url: "https://a.test", color: "#ffee00" }, { type: "button", label: "B", url: "https://b.test", color: "red;x" }] });
+	assert.equal(parsed.design.blocks[1].color, undefined);
+	const html = render.renderHtml(parsed.design);
+	assert.match(html, /background-color:#ffee00;color:#202124/);
+	assert.match(html, /background-color:#0b57d0;color:#ffffff/);
+});

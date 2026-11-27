@@ -18,6 +18,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { EmailHtmlRenderer } from "@/components/messages/email-html-renderer";
 import { sanitizeEmailHtml, sanitizeEditorHtml } from "@/lib/email/html";
+import { CtaForm } from "./cta-form";
 import type { RichTextEditorProps, ToolbarCommand } from "./rich-text-editor-types";
 
 const COMMANDS: ToolbarCommand[] = [
@@ -55,6 +56,7 @@ export function RichTextEditor({
 	const [active, setActive] = useState<Record<string, boolean>>({});
 	const [linkOpen, setLinkOpen] = useState(false);
 	const [linkUrl, setLinkUrl] = useState("");
+	const [ctaOpen, setCtaOpen] = useState(false);
 	const [showQuoted, setShowQuoted] = useState(false);
 	const savedRange = useRef<Range | null>(null);
 	const lastEmitted = useRef<string | null>(null);
@@ -134,6 +136,38 @@ export function RichTextEditor({
 		emit();
 	}
 
+	function openCta() {
+		const selection = window.getSelection();
+		savedRange.current = selection && selection.rangeCount > 0 && editorRef.current?.contains(selection.anchorNode) ? selection.getRangeAt(0).cloneRange() : null;
+		setLinkOpen(false);
+		setCtaOpen(true);
+	}
+
+	/** The button goes on its own line, where the cursor was, with a line left to keep writing. */
+	function insertCta(anchor: HTMLAnchorElement) {
+		setCtaOpen(false);
+		const editor = editorRef.current;
+		if (!editor) return;
+		const block = document.createElement("div");
+		block.style.margin = "12px 0";
+		block.appendChild(anchor);
+		const next = document.createElement("div");
+		next.appendChild(document.createElement("br"));
+		const range = savedRange.current;
+		if (range) {
+			let node: Node = range.startContainer;
+			while (node !== editor && node.parentNode !== editor) node = node.parentNode!;
+			const after = node === editor ? editor.childNodes[range.startOffset] ?? null : node.nextSibling;
+			editor.insertBefore(block, after);
+		} else {
+			editor.appendChild(block);
+		}
+		editor.insertBefore(next, block.nextSibling);
+		editor.focus();
+		window.getSelection()?.collapse(next, 0);
+		emit();
+	}
+
 	function onPaste(event: ClipboardEvent<HTMLDivElement>) {
 		event.preventDefault();
 		const text = event.clipboardData.getData("text/plain");
@@ -177,6 +211,18 @@ export function RichTextEditor({
 				className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
 			>
 				<Link2 className="h-4 w-4" />
+			</button>
+		</Tooltip>
+		<Tooltip label={t("editor.insertButton")}>
+			<button
+				type="button"
+				aria-label={t("editor.insertButton")}
+				disabled={disabled}
+				onMouseDown={(event) => event.preventDefault()}
+				onClick={openCta}
+				className="rounded-md px-1.5 py-1 text-[11px] font-bold text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+			>
+				CTA
 			</button>
 		</Tooltip>
 		<Tooltip label={t("editor.clearFormatting")}>
@@ -249,6 +295,7 @@ export function RichTextEditor({
 						{toolbarEnd}
 					</div>
 				</div>
+				{ctaOpen && toolbarVisible && <CtaForm onInsert={insertCta} onClose={() => setCtaOpen(false)} />}
 				{linkOpen && toolbarVisible && (
 					<div
 						className="absolute bottom-full left-2 z-10 mb-1 flex items-center gap-2 rounded-lg border border-neutral-200 bg-white p-2 shadow-lg"

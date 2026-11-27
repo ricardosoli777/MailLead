@@ -10,6 +10,10 @@ Em **Modelos**, preencha nome, sobrenome, empresa, endereço, CEP, cidade, estad
 
 O HTML é reconstruído no servidor com uma lista curta de marcas e estilos (`rich-footer.ts`); o resto é descartado.
 
+## Cor dos botões
+
+Cada botão pode ter a própria cor; sem ela, usa a **Cor de destaque**. As letras ficam escuras em botão claro e brancas nos demais. Ao escrever um e-mail comum, o botão **CTA** da barra de formatação insere um botão.
+
 ## Link de descadastro
 
 Entra sozinho no fim de todo e-mail de marketing, com um endereço próprio para cada pessoa, junto com o cabeçalho de descadastro em um clique. Para repeti-lo no texto: `{{link_descadastro}}` ou `[sair da lista]({{link_descadastro}})`. Inserido pelo compositor do e-mail comum, o modelo não leva o link, porque não é envio de marketing.

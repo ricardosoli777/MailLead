@@ -8,7 +8,7 @@ import { runFlows, type WhatsAppSender } from "./flows";
 import type { SenderSettings } from "./sending-types";
 import { formatFrom } from "./sending-utils";
 import { CONFIGURATION_SET, checkSender, getQuota } from "./ses-marketing";
-import { sendWhatsAppAudio, whatsAppStatus, type WhatsAppConfig } from "./whatsapp";
+import { sendWhatsAppAudio, sendWhatsAppText, whatsAppStatus, type WhatsAppConfig } from "./whatsapp";
 
 const CHECK_TTL_MS = 60 * 60 * 1000;
 // A pass each minute with a fifth of the batch keeps the same pace as before.
@@ -36,20 +36,27 @@ export async function runMarketingSending(env: CloudflareEnv): Promise<void> {
 	await notifyBreaker(env, db);
 }
 
-/** The funnel's audio, with a few seconds between one person and the next. */
+/** The funnel's WhatsApp, with a few seconds between one sending and the next. */
 async function whatsAppSender(env: CloudflareEnv, db: D1Database): Promise<WhatsAppSender | null> {
 	const config = await readSetting<WhatsAppConfig>(db, "whatsapp");
 	if (!config) return null;
 	let sent = 0;
+	const pace = async () => {
+		if (sent++) await pause(3000 + Math.random() * 5000);
+	};
 	return {
 		connected: async () => (await whatsAppStatus(config)).connected,
 		send: async (phone, audioId) => {
 			const object = await env.BUCKET.get(`marketing/audio/${audioId}`);
 			if (!object) throw new Error("Áudio não encontrado.");
-			if (sent++) await pause(3000 + Math.random() * 5000);
+			await pace();
 			const type = object.httpMetadata?.contentType ?? "audio/ogg";
 			const name = `audio.${type.includes("webm") ? "webm" : type.includes("mp4") ? "m4a" : type.includes("mpeg") ? "mp3" : type.includes("wav") ? "wav" : "ogg"}`;
 			await sendWhatsAppAudio(config, phone, new File([await object.arrayBuffer()], name, { type }));
+		},
+		text: async (phone, message) => {
+			await pace();
+			await sendWhatsAppText(config, phone, message);
 		},
 	};
 }

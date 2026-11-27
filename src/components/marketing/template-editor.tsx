@@ -45,6 +45,18 @@ function Field({ label, value, onChange, multiline, placeholder, variables }: { 
 	);
 }
 
+function ButtonColor({ value, accent, onChange }: { value?: string; accent: string; onChange: (color: string | undefined) => void }) {
+	return (
+		<div className="flex flex-wrap items-center gap-3">
+			<label className="flex items-center gap-3 text-xs font-medium text-neutral-600">
+				Cor deste botão
+				<input type="color" value={value ?? accent} onChange={(event) => onChange(event.target.value)} />
+			</label>
+			{value && <Button type="button" size="sm" variant="outline" onClick={() => onChange(undefined)}>Usar a cor de destaque</Button>}
+		</div>
+	);
+}
+
 function ImageField({ label, value, onChange, onError }: { label: string; value: string; onChange: (value: string) => void; onError: (message: string) => void }) {
 	async function upload(file: File) {
 		const form = new FormData();
@@ -99,7 +111,7 @@ export function TemplateEditor({ initial, onClose, onSaved, stickyBar }: { initi
 	};
 
 	const setDesign = (patch: Partial<Design>) => setDraft((current) => ({ ...current, design: { ...current.design, ...patch } }));
-	const setBlock = (index: number, patch: Record<string, string>) =>
+	const setBlock = (index: number, patch: Record<string, string | undefined>) =>
 		setDesign({ blocks: design.blocks.map((block, i) => (i === index ? ({ ...block, ...patch } as Block) : block)) });
 	function move(index: number, offset: number) {
 		const blocks = [...design.blocks];
@@ -188,6 +200,7 @@ export function TemplateEditor({ initial, onClose, onSaved, stickyBar }: { initi
 						<>
 							<Field variables label="Texto do botão" value={block.label} onChange={(label) => setBlock(index, { label })} />
 							<Field label="Link" value={block.url} onChange={(url) => setBlock(index, { url })} />
+							<ButtonColor value={block.color} accent={design.accent} onChange={(color) => setBlock(index, { color })} />
 						</>
 					)}
 					{block.type === "media" && (
@@ -195,6 +208,7 @@ export function TemplateEditor({ initial, onClose, onSaved, stickyBar }: { initi
 							<Field label={block.kind === "video" ? "Link do vídeo" : "Link do áudio"} value={block.url} onChange={(url) => setBlock(index, { url })} />
 							<ImageField label="Imagem de capa" value={block.imageUrl ?? ""} onChange={(imageUrl) => setBlock(index, { imageUrl })} onError={fail} />
 							<Field label="Texto do botão" value={block.label} onChange={(label) => setBlock(index, { label })} />
+							<ButtonColor value={block.color} accent={design.accent} onChange={(color) => setBlock(index, { color })} />
 						</>
 					)}
 				</section>
