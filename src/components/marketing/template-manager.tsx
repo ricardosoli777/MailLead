@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { STARTERS, type Starter } from "@/lib/marketing/starters";
 import type { Design, Template } from "@/lib/marketing/types";
+import { FooterSettings } from "./footer-settings";
 import { marketingRequest } from "./marketing-request";
 import { TemplateEditor } from "./template-editor";
 import { TemplateGallery } from "./template-gallery";
@@ -55,6 +56,7 @@ export function TemplateManager() {
 				<p className="text-sm text-neutral-500">Crie mensagens com logo, imagens, botões e rodapé. Os modelos salvos também aparecem no compositor.</p>
 			</div>
 			{error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+			<FooterSettings onSaved={load} />
 			<section className="space-y-2 rounded-3xl bg-white p-6">
 				<Label htmlFor="marketing-saved">Modelos salvos</Label>
 				{templates.length === 0 && <p className="text-sm text-neutral-500">Nenhum modelo salvo ainda.</p>}

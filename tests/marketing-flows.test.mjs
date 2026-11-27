@@ -22,6 +22,7 @@ const tree = await bundle("src/lib/marketing/flows-utils.ts", "tree.mjs");
 const engine = await bundle("src/lib/marketing/engine.ts", "engine.mjs");
 const testing = await bundle("src/lib/marketing/flow-test.ts", "flow-test.mjs");
 const campaigns = await bundle("src/lib/marketing/campaigns.ts", "campaigns.mjs");
+const signature = await bundle("src/lib/marketing/footer.ts", "footer.mjs");
 
 function database() {
 	const sqlite = new DatabaseSync(":memory:");
@@ -433,4 +434,20 @@ test("the owner can test a live funnel with their own data, again and again", as
 	await testing.stopFlowTest(db, id);
 	assert.equal(await testing.currentFlowTest(db, id), null);
 	assert.equal((await flows.listFlows(db))[0].testing, false);
+});
+
+test("the footer filled in once reaches the templates and what is still going out", async () => {
+	const { db, id, join: enter, sent, tick } = await setup([wait("wait1"), email("mail1")]);
+	await flows.activateFlow(db, id, NOW);
+	await enter("ana@gmail.com", NOW);
+	assert.ok((await signature.saveFooter(db, { company: "", contact: "x", disclaimer: "y" })).error);
+	const saved = await signature.saveFooter(db, { company: "Rica Cursos", contact: "oi@rica.test", disclaimer: "Você se cadastrou." });
+	assert.deepEqual([saved.templates, saved.sending], [1, 1]);
+	assert.equal((await signature.withFooter(db, design)).footer.company, "Rica Cursos");
+	await tick(NOW);
+	await tick(NOW + 2 * DAY);
+	await tick(NOW + 2 * DAY + HOUR);
+	// The funnel was already active, and its e-mail leaves signed with the new data.
+	assert.match(sent[0].text, /Rica Cursos/);
+	assert.doesNotMatch(sent[0].text, /KLEAD\n/);
 });

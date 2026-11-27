@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import type { Footer } from "@/lib/marketing/footer";
 import { renderHtml, renderText } from "@/lib/marketing/render";
 import type { Block, Design, Template } from "@/lib/marketing/types";
 import { marketingRequest } from "./marketing-request";
@@ -73,6 +74,15 @@ export function TemplateEditor({ initial, onClose, onSaved, stickyBar }: { initi
 	const content = ({ name, subject, design }: Draft) => JSON.stringify({ name, subject, design });
 	// A new message that was never saved counts as unsaved.
 	const saved = useRef(initial.id ? content(initial) : "");
+	// With the footer data filled in once, it is shown here and not typed again.
+	const [shared, setShared] = useState(false);
+	useEffect(() => {
+		void marketingRequest<{ footer: Footer | null }>("/api/marketing/footer").then(({ footer }) => {
+			if (!footer) return;
+			setShared(true);
+			setDraft((current) => ({ ...current, design: { ...current.design, footer } }));
+		}).catch(() => {});
+	}, []);
 	const close = async () => {
 		if (content(draft) !== saved.current && !(await confirmDialog("Sair sem salvar este e-mail?"))) return;
 		onClose();
@@ -191,9 +201,15 @@ export function TemplateEditor({ initial, onClose, onSaved, stickyBar }: { initi
 
 			<section className="space-y-3 rounded-3xl bg-white p-6">
 				<Label>Rodapé (obrigatório)</Label>
-				<Field label="Empresa ou remetente" value={design.footer.company} onChange={(company) => setDesign({ footer: { ...design.footer, company } })} />
-				<Field label="Contato" value={design.footer.contact} onChange={(contact) => setDesign({ footer: { ...design.footer, contact } })} />
-				<Field label="Aviso legal" multiline value={design.footer.disclaimer} onChange={(disclaimer) => setDesign({ footer: { ...design.footer, disclaimer } })} />
+				{shared ? (
+					<p className="text-sm text-neutral-500">Usa os dados de <strong>Modelos → Dados do rodapé</strong>, os mesmos em todos os e-mails. A prévia abaixo já mostra.</p>
+				) : (
+					<>
+						<Field label="Empresa ou remetente" value={design.footer.company} onChange={(company) => setDesign({ footer: { ...design.footer, company } })} />
+						<Field label="Contato" value={design.footer.contact} onChange={(contact) => setDesign({ footer: { ...design.footer, contact } })} />
+						<Field label="Aviso legal" multiline value={design.footer.disclaimer} onChange={(disclaimer) => setDesign({ footer: { ...design.footer, disclaimer } })} />
+					</>
+				)}
 			</section>
 
 			<section className="space-y-3 rounded-3xl bg-white p-6">

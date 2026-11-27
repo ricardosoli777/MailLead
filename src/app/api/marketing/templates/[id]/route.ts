@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withFooter } from "@/lib/marketing/footer";
 import { readTemplateInput, requireMarketing } from "@/lib/marketing/server";
 
 type Context = { params: Promise<{ id: string }> };
@@ -10,10 +11,11 @@ export async function PUT(request: Request, { params }: Context) {
 	if (input.error) return input.error;
 	const { id } = await params;
 	const now = Date.now();
+	const design = await withFooter(access.db, input.design);
 	const result = await access.db.prepare("UPDATE marketing_templates SET name = ?, subject = ?, design = ?, updated_at = ? WHERE id = ?")
-		.bind(input.name, input.subject, JSON.stringify(input.design), now, id).run();
+		.bind(input.name, input.subject, JSON.stringify(design), now, id).run();
 	if (!result.meta.changes) return NextResponse.json({ error: "Modelo não encontrado." }, { status: 404 });
-	return NextResponse.json({ template: { id, name: input.name, subject: input.subject, design: input.design, updatedAt: now } });
+	return NextResponse.json({ template: { id, name: input.name, subject: input.subject, design, updatedAt: now } });
 }
 
 export async function DELETE(request: Request, { params }: Context) {

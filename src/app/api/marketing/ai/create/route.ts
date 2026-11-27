@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { newId } from "@/lib/ids";
 import { funnelGraph, readFunnel } from "@/lib/marketing/ai-utils";
 import { createFlow } from "@/lib/marketing/flows";
+import { readFooter } from "@/lib/marketing/footer";
 import { parseDesign } from "@/lib/marketing/render";
 import { requireMarketing } from "@/lib/marketing/server";
 import { STARTERS } from "@/lib/marketing/starters";
@@ -20,12 +21,13 @@ export async function POST(request: Request) {
 	const latest = await access.db.prepare("SELECT design FROM marketing_templates ORDER BY updated_at DESC LIMIT 1").first<{ design: string }>();
 	const base = latest ? (JSON.parse(latest.design) as (typeof STARTERS)[number]["design"]) : STARTERS[0].design;
 
+	const footer = (await readFooter(access.db)) ?? base.footer;
 	const now = Date.now();
 	const inserts: D1PreparedStatement[] = [];
 	let problem = "";
 	const graph = funnelGraph(funnel, (email) => {
 		const id = newId("tpl");
-		const parsed = parseDesign({ accent: base.accent, footer: base.footer, preheader: email.preheader, blocks: email.blocks });
+		const parsed = parseDesign({ accent: base.accent, footer, preheader: email.preheader, blocks: email.blocks });
 		if ("error" in parsed) problem = `${email.name}: ${parsed.error}`;
 		else inserts.push(access.db.prepare("INSERT INTO marketing_templates (id, name, subject, design, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
 			.bind(id, `${funnel.name} · ${email.name}`.slice(0, 120), email.subject, JSON.stringify(parsed.design), now, now));

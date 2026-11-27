@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { newId } from "@/lib/ids";
+import { withFooter } from "@/lib/marketing/footer";
 import { readTemplateInput, requireMarketing, toTemplate } from "@/lib/marketing/server";
 
 export async function GET(request: Request) {
@@ -16,7 +17,8 @@ export async function POST(request: Request) {
 	if (input.error) return input.error;
 	const id = newId("tpl");
 	const now = Date.now();
+	const design = await withFooter(access.db, input.design);
 	await access.db.prepare("INSERT INTO marketing_templates (id, name, subject, design, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
-		.bind(id, input.name, input.subject, JSON.stringify(input.design), now, now).run();
-	return NextResponse.json({ template: { id, name: input.name, subject: input.subject, design: input.design, updatedAt: now } }, { status: 201 });
+		.bind(id, input.name, input.subject, JSON.stringify(design), now, now).run();
+	return NextResponse.json({ template: { id, name: input.name, subject: input.subject, design, updatedAt: now } }, { status: 201 });
 }

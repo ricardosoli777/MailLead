@@ -2,7 +2,11 @@
 
 `src/lib/marketing/starters.ts` traz os e-mails prontos, separados por uso: boas-vindas, conteúdo, eventos, vendas, clientes, reativação e avisos. Os textos são do MailLead; nenhum foi copiado de outra ferramenta.
 
-Aparecem em **Marketing → Criar → Modelos** e dentro da caixa de e-mail do funil (**Escolher modelo pronto**). O rodapé do último modelo salvo é reaproveitado.
+Aparecem em **Marketing → Criar → Modelos** e dentro da caixa de e-mail do funil (**Escolher modelo pronto**).
+
+## Dados do rodapé
+
+Em **Modelos**, preencha uma vez o nome (empresa ou pessoa), o contato e o aviso legal. **Salvar e aplicar em todos** troca o rodapé de todos os modelos e dos funis e campanhas ainda não concluídos, mesmo ativos. O que já foi enviado não muda. Enquanto não preencher, cada modelo tem o seu rodapé.
 
 ## IA escolhe
 
