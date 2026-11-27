@@ -4,8 +4,11 @@ export type AiMessage = { role: "user" | "assistant"; content: string };
 
 export type AiBlock = { type: "heading" | "text"; text: string } | { type: "button"; label: string; url: string } | { type: "image"; url: string; alt: string } | { type: "divider" };
 
-/** A file the administrator attached in the chat, already hosted. */
-export type AiFile = { name: string; url: string; kind: "image" | "pdf" };
+/** A picture the administrator attached in the chat, already hosted, to appear in the e-mails. */
+export type AiFile = { name: string; url: string };
+
+/** Source material the model reads to write the e-mails. Never hosted or stored. */
+export type AiDocument = { name: string; kind: "pdf"; data: string } | { name: string; kind: "text"; text: string };
 
 export type AiStep =
 	| { type: "email"; name: string; subject: string; preheader: string; blocks: AiBlock[] }

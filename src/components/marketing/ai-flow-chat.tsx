@@ -4,10 +4,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, Paperclip, Square, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import type { AiAnswer, AiFile, AiFunnel, AiMessage, AiStep } from "@/lib/marketing/ai-types";
-import { AI_PROVIDERS } from "@/lib/marketing/ai-utils";
+import type { AiAnswer, AiDocument, AiFile, AiFunnel, AiMessage, AiStep } from "@/lib/marketing/ai-types";
+import { AI_PROVIDERS, documentsProblem } from "@/lib/marketing/ai-utils";
 import { readAiSettings, type AiSettings } from "./ai-store";
 import { marketingRequest } from "./marketing-request";
+import { ACCEPTED_FILES, readDocument } from "./read-document";
 import { useDictation } from "./use-dictation";
 
 const EXAMPLES = "Ex.: Funil de boas-vindas para quem baixou meu e-book de receitas. Quero 3 e-mails e, no último, convidar para o curso (https://meusite.com/curso).";
@@ -56,6 +57,7 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 	const [busy, setBusy] = useState<"" | "asking" | "creating">("");
 
 	const [files, setFiles] = useState<AiFile[]>([]);
+	const [documents, setDocuments] = useState<AiDocument[]>([]);
 	const [uploading, setUploading] = useState(false);
 	const picker = useRef<HTMLInputElement>(null);
 	const dictation = useDictation((words) => setDraft((current) => `${current}${current && !/\s$/.test(current) ? " " : ""}${words}`.slice(0, 4000)), setError);
@@ -64,12 +66,20 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 		setError("");
 		setUploading(true);
 		try {
-			for (const file of chosen.slice(0, 10 - files.length)) {
-				const form = new FormData();
-				form.set("file", file);
-				form.set("allow", "pdf");
-				const { url } = await marketingRequest<{ url: string }>("/api/marketing/assets", { method: "POST", body: form });
-				setFiles((current) => [...current, { name: file.name, url, kind: /\.pdf$/i.test(file.name) || file.type === "application/pdf" ? "pdf" : "image" }]);
+			let material = documents;
+			for (const file of chosen) {
+				if (/^image\//.test(file.type)) {
+					const form = new FormData();
+					form.set("file", file);
+					const { url } = await marketingRequest<{ url: string }>("/api/marketing/assets", { method: "POST", body: form });
+					setFiles((current) => [...current, { name: file.name, url }].slice(0, 10));
+					continue;
+				}
+				const next = [...material, await readDocument(file)];
+				const problem = documentsProblem(next);
+				if (problem) throw new Error(problem);
+				material = next;
+				setDocuments(material);
 			}
 		} catch (uploadError) {
 			setError((uploadError as Error).message);
@@ -96,7 +106,7 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 		setError("");
 		setBusy("asking");
 		try {
-			const answer = await marketingRequest<AiAnswer>("/api/marketing/ai/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider, key: config.key, model: config.model, messages: next, funnel, files }) });
+			const answer = await marketingRequest<AiAnswer>("/api/marketing/ai/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider, key: config.key, model: config.model, messages: next, funnel, files, documents }) });
 			setMessages([...next, { role: "assistant", content: answer.reply }]);
 			if (answer.funnel) setFunnel(answer.funnel);
 		} catch (askError) {
@@ -117,6 +127,7 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 			setMessages([]);
 			setFunnel(null);
 			setFiles([]);
+			setDocuments([]);
 			await onCreated(id);
 		} catch (createError) {
 			setError((createError as Error).message);
@@ -151,6 +162,7 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 							setFunnel(null);
 							setMessages([]);
 							setFiles([]);
+							setDocuments([]);
 						}}>Começar de novo</Button>
 					</div>
 				</div>
@@ -165,14 +177,23 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 						void ask();
 					}
 				}} />
+				{documents.length > 0 && (
+					<ul className="flex flex-wrap gap-2" aria-label="Documentos para a IA ler">
+						{documents.map((document, index) => (
+							<li key={`${document.name}-${index}`} className="flex items-center gap-2 rounded-full border border-neutral-200 py-1 pl-1 pr-2 text-xs">
+								<span className="rounded-full bg-neutral-100 px-2 py-1 font-medium">Ler</span>
+								<span className="max-w-40 truncate">{document.name}</span>
+								<button type="button" aria-label={`Remover ${document.name}`} onClick={() => setDocuments((current) => current.filter((item) => item !== document))}><X className="h-3.5 w-3.5" /></button>
+							</li>
+						))}
+					</ul>
+				)}
 				{files.length > 0 && (
-					<ul className="flex flex-wrap gap-2" aria-label="Arquivos anexados">
+					<ul className="flex flex-wrap gap-2" aria-label="Imagens para os e-mails">
 						{files.map((file) => (
 							<li key={file.url} className="flex items-center gap-2 rounded-full border border-neutral-200 py-1 pl-1 pr-2 text-xs">
-								{file.kind === "image"
-									// eslint-disable-next-line @next/next/no-img-element
-									? <img src={file.url} alt="" className="h-7 w-7 rounded-full object-cover" />
-									: <span className="rounded-full bg-neutral-100 px-2 py-1 font-medium">PDF</span>}
+								{/* eslint-disable-next-line @next/next/no-img-element */}
+								<img src={file.url} alt="" className="h-7 w-7 rounded-full object-cover" />
 								<span className="max-w-40 truncate">{file.name}</span>
 								<button type="button" aria-label={`Remover ${file.name}`} onClick={() => setFiles((current) => current.filter((item) => item.url !== file.url))}><X className="h-3.5 w-3.5" /></button>
 							</li>
@@ -180,8 +201,8 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 					</ul>
 				)}
 				<div className="flex flex-wrap items-center gap-2">
-					<Button type="button" size="sm" variant="outline" aria-label="Anexar arquivo" title="Anexar imagem ou PDF" disabled={uploading || files.length >= 10} onClick={() => picker.current?.click()}><Paperclip className="h-4 w-4" /></Button>
-					<input ref={picker} type="file" multiple accept="image/png,image/jpeg,image/gif,application/pdf" aria-label="Arquivos para os e-mails" className="hidden" onChange={(event) => {
+					<Button type="button" size="sm" variant="outline" aria-label="Anexar arquivo" title="Anexar documento ou imagem" disabled={uploading} onClick={() => picker.current?.click()}><Paperclip className="h-4 w-4" /></Button>
+					<input ref={picker} type="file" multiple accept={ACCEPTED_FILES} aria-label="Documentos e imagens" className="hidden" onChange={(event) => {
 						const chosen = [...(event.target.files ?? [])];
 						event.target.value = "";
 						void attach(chosen);
@@ -192,10 +213,10 @@ export function AiFlowChat({ listId, onCreated }: { listId: string; onCreated: (
 						</Button>
 					)}
 					<Button type="submit" disabled={!ready || !!busy || uploading || !draft.trim()}>Enviar</Button>
-					{uploading && <span role="status" className="text-xs text-neutral-500">Enviando arquivo…</span>}
+					{uploading && <span role="status" className="text-xs text-neutral-500">Lendo arquivo…</span>}
 					{dictation.listening && <span role="status" className="text-xs text-red-700">Ouvindo… fale e clique no quadrado para parar.</span>}
 				</div>
-				<p className="text-xs text-neutral-500">Anexos: imagens (PNG, JPG, GIF até 2 MB) e PDF (até 10 MB). Eles ficam em um endereço público para aparecer nos e-mails; não anexe documentos sigilosos.</p>
+				<p className="text-xs text-neutral-500">Documentos (PDF, Word, TXT) são lidos pela IA para escrever os e-mails: vão ao provedor a cada mensagem e não ficam guardados no MailLead. Imagens (até 2 MB) entram nos e-mails e ficam em endereço público.</p>
 			</form>
 		</section>
 	);

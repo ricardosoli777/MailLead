@@ -1,5 +1,5 @@
 /** What the model may propose, rebuilt field by field: its answer is untrusted text. */
-import type { AiAnswer, AiBlock, AiFile, AiFunnel, AiProvider, AiStep } from "./ai-types";
+import type { AiAnswer, AiBlock, AiDocument, AiFile, AiFunnel, AiProvider, AiStep } from "./ai-types";
 import { MAX_STEPS, fromTree, newStepId, type TreeStep } from "./flows-utils";
 import type { FlowGraph } from "./flows-types";
 
@@ -70,13 +70,41 @@ export function readFiles(input: unknown): AiFile[] {
 	return list(input).slice(0, 10).flatMap((raw): AiFile[] => {
 		const url = text(raw.url, 500);
 		const name = text(raw.name, 120);
-		return name && /^https?:\/\/[^\s]+$/i.test(url) ? [{ name, url, kind: raw.kind === "pdf" ? "pdf" : "image" }] : [];
+		return name && /^https?:\/\/[^\s]+$/i.test(url) ? [{ name, url }] : [];
+	});
+}
+
+export const MAX_DOCUMENTS = 5;
+export const MAX_PDF_BYTES = 10 * 1024 * 1024;
+export const MAX_DOCUMENT_TEXT = 100_000;
+
+/** Why the material cannot be sent, or null. Nothing is cut silently. */
+export function documentsProblem(documents: AiDocument[]): string | null {
+	if (documents.length > MAX_DOCUMENTS) return `Use no máximo ${MAX_DOCUMENTS} documentos.`;
+	let pdf = 0;
+	let words = 0;
+	for (const document of documents) {
+		if (document.kind === "pdf") pdf += (document.data.length * 3) / 4;
+		else words += document.text.length;
+	}
+	if (pdf > MAX_PDF_BYTES) return "Os PDFs somam mais de 10 MB. Envie menos páginas.";
+	if (words > MAX_DOCUMENT_TEXT) return "Os textos somam mais de 100 mil caracteres. Envie só a parte que importa.";
+	return null;
+}
+
+export function readDocuments(input: unknown): AiDocument[] {
+	return list(input).flatMap((raw): AiDocument[] => {
+		const name = text(raw.name, 120) || "documento";
+		// "JVBERi" is "%PDF-" in base64.
+		if (raw.kind === "pdf" && typeof raw.data === "string" && /^JVBERi[A-Za-z0-9+/]*={0,2}$/.test(raw.data)) return [{ name, kind: "pdf", data: raw.data }];
+		if (raw.kind === "text" && typeof raw.text === "string" && raw.text.trim()) return [{ name, kind: "text", text: raw.text }];
+		return [];
 	});
 }
 
 /** The model may show only pictures that were really attached, never an address it made up. */
 export function keepAttachedImages(funnel: AiFunnel, files: AiFile[], kept: AiFunnel | null = null): AiFunnel {
-	const allowed = new Set(files.filter((file) => file.kind === "image").map((file) => file.url));
+	const allowed = new Set(files.map((file) => file.url));
 	const gather = (steps: AiStep[]) => steps.forEach((step) => {
 		if (step.type === "email") step.blocks.forEach((block) => block.type === "image" && allowed.add(block.url));
 		if (step.type === "condition") [step.yes, step.no].forEach(gather);

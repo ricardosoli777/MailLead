@@ -12,4 +12,5 @@
 
 ## Voz e anexos
 - **Microfone:** ditado pelo reconhecimento de voz do próprio navegador (`SpeechRecognition`, Chrome e Edge; o botão some onde não existe). O navegador pode enviar o áudio ao serviço de voz do fabricante. O texto fica na caixa para revisar antes de enviar.
-- **Anexos:** imagens (2 MB) e PDF (10 MB) vão para `marketing/assets/`, com endereço público e impossível de adivinhar. A IA recebe nome e endereço, não o conteúdo. Imagem vira bloco de imagem; PDF vira botão. Endereços de imagem que o modelo inventar são descartados.
+- **Documentos** (PDF, DOCX, TXT, MD, CSV): material que a IA lê para escrever os e-mails. Ficam só na tela e vão ao provedor a cada mensagem do chat; o MailLead não os grava nem publica. PDF vai inteiro (até 10 MB); do Word o navegador extrai o texto; textos somam até 100 mil caracteres. Até 5.
+- **Imagens** (2 MB): vão para `marketing/assets/`, com endereço público e impossível de adivinhar, e viram blocos de imagem. A IA vê só o nome. Endereços de imagem que o modelo inventar são descartados.

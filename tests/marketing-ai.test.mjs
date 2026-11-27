@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import test, { after } from "node:test";
+import { deflateRawSync } from "node:zlib";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
@@ -17,6 +18,7 @@ async function bundle(entry, outfile) {
 const ai = await bundle("src/lib/marketing/ai.ts", "ai.mjs");
 const utils = await bundle("src/lib/marketing/ai-utils.ts", "utils.mjs");
 const flows = await bundle("src/lib/marketing/flows-utils.ts", "flows.mjs");
+const docx = await bundle("src/lib/marketing/docx.ts", "docx.mjs");
 
 const mail = (name) => ({ type: "email", name, subject: `Assunto ${name}`, blocks: [{ type: "text", text: "Olá" }] });
 const proposal = { name: "Boas-vindas", steps: [mail("um"), { type: "wait", amount: 2 }, { type: "condition", test: "clicked", yes: [{ type: "tag", tag: "Interessado" }], no: [mail("dois")] }] };
@@ -72,8 +74,57 @@ test("asks Claude with the user's key and reads the proposal; errors never repea
 });
 
 test("only attached pictures can appear in an e-mail", () => {
-	const files = utils.readFiles([{ name: "capa.png", url: "https://x.test/capa", kind: "image" }, { name: "x", url: "javascript:1" }]);
+	const files = utils.readFiles([{ name: "capa.png", url: "https://x.test/capa" }, { name: "x", url: "javascript:1" }]);
 	assert.equal(files.length, 1);
 	const funnel = utils.readFunnel({ steps: [{ type: "email", name: "a", blocks: [{ type: "image", url: "https://x.test/capa" }, { type: "image", url: "https://inventada.test/i.png" }, { type: "text", text: "oi" }] }] });
 	assert.deepEqual(utils.keepAttachedImages(funnel, files).steps[0].blocks.map((block) => block.url ?? block.type), ["https://x.test/capa", "text"]);
+});
+
+test("documents are sent to the model to be read, and Word files become text", async () => {
+	const documents = utils.readDocuments([{ name: "guia.pdf", kind: "pdf", data: Buffer.from("%PDF-1.4 x").toString("base64") }, { name: "notas.txt", kind: "text", text: "Preço: 10" }, { name: "x", kind: "pdf", data: "PHNjcmlwdD4=" }]);
+	assert.equal(documents.length, 2);
+	assert.equal(utils.documentsProblem(documents), null);
+	assert.match(utils.documentsProblem([{ name: "g", kind: "text", text: "a".repeat(utils.MAX_DOCUMENT_TEXT + 1) }]), /100 mil/);
+	let body;
+	const request = async (_url, init) => {
+		body = JSON.parse(init.body);
+		return new Response(JSON.stringify({ type: "message", id: "m", model: "claude-opus-5-5", role: "assistant", stop_reason: "end_turn", content: [{ type: "text", text: '{"reply":"ok"}' }], usage: { input_tokens: 1, output_tokens: 1 } }), { headers: { "content-type": "application/json" } });
+	};
+	await ai.askAi({ provider: "anthropic", key: "k", model: "claude-opus-5-5", messages: [{ role: "user", content: "use o guia" }], tags: [], funnel: null, documents }, request);
+	assert.deepEqual(body.messages[0].content.map((part) => part.type), ["document", "text", "text"]);
+	assert.match(body.messages[0].content[1].text, /Preço: 10/);
+
+	const zip = (name, content) => {
+		const data = deflateRawSync(Buffer.from(content));
+		const file = Buffer.from(name);
+		const local = Buffer.alloc(30);
+		local.writeUInt32LE(0x04034b50, 0);
+		local.writeUInt16LE(8, 8);
+		local.writeUInt16LE(file.length, 26);
+		const central = Buffer.alloc(46);
+		central.writeUInt32LE(0x02014b50, 0);
+		central.writeUInt16LE(8, 10);
+		central.writeUInt32LE(data.length, 20);
+		central.writeUInt16LE(file.length, 28);
+		const end = Buffer.alloc(22);
+		end.writeUInt32LE(0x06054b50, 0);
+		end.writeUInt16LE(1, 10);
+		end.writeUInt32LE(30 + file.length + data.length, 16);
+		return new Uint8Array(Buffer.concat([local, file, data, central, file, end]));
+	};
+	assert.equal(await docx.docxText(zip("word/document.xml", "<w:p><w:t>Olá &amp; bem-vindo</w:t></w:p><w:p><w:t>Fim</w:t></w:p>")), "Olá & bem-vindo\nFim");
+	await assert.rejects(docx.docxText(new Uint8Array(40)), /Word/);
+});
+
+test("OpenAI and Gemini receive the PDF too", async () => {
+	const data = Buffer.from("%PDF-1.4 x").toString("base64");
+	for (const [provider, model] of [["openai", "gpt-x"], ["gemini", "gemini-x"]]) {
+		let sent = "";
+		const request = async (_url, init) => {
+			sent = init.body;
+			return new Response("{}", { status: 400, headers: { "content-type": "application/json" } });
+		};
+		await assert.rejects(ai.askAi({ provider, key: "k", model, messages: [{ role: "user", content: "oi" }], tags: [], funnel: null, documents: [{ name: "g.pdf", kind: "pdf", data }] }, request), /400/);
+		assert.ok(sent.includes(`data:application/pdf;base64,${data}`), provider);
+	}
 });
