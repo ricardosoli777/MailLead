@@ -117,6 +117,20 @@ const TOPICS: Topic[] = [
 		],
 	},
 	{
+		title: "Criar funil com IA",
+		steps: [
+			"Em IA, cole a chave de API da OpenAI, Anthropic ou Google, escolha o modelo e marque \"Usar este\".",
+			"Em Funis, no quadro \"Criar com IA\", conte o que você oferece, para quem e o objetivo.",
+			"Leia a proposta (clique em cada e-mail para ver o texto) e peça ajustes no chat.",
+			"Clique em \"Criar este funil\". Ele abre como rascunho, com os e-mails já escritos.",
+		],
+		tips: [
+			"As chaves ficam só no seu navegador. Em outro computador, cole de novo.",
+			"O uso da API é cobrado pelo provedor.",
+			"Revise sempre: a IA pode errar. Nada é enviado antes de você ativar.",
+		],
+	},
+	{
 		title: "Backup e restauração",
 		tips: [
 			"Em Backup: uma cópia é feita todo dia e ficam as últimas 30. Antes de uma grande mudança, clique em Fazer backup agora.",

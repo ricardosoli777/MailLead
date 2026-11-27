@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import type { Flow } from "@/lib/marketing/flows-types";
 import { recipeGraph, RECIPES } from "@/lib/marketing/flows-utils";
 import type { Template } from "@/lib/marketing/types";
+import { AiFlowChat } from "./ai-flow-chat";
 import type { Option } from "./flow-dialogs";
 import { marketingRequest } from "./marketing-request";
 
@@ -66,6 +67,10 @@ export function FlowManager() {
 	return (
 		<div className="max-w-3xl space-y-6">
 			{error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+			<AiFlowChat listId={lists.length === 1 ? lists[0].id : ""} onCreated={async (id) => {
+				await load();
+				setOpenId(id);
+			}} />
 			<section className="space-y-3 rounded-3xl bg-white p-6">
 				<h2 className="text-base font-semibold">Novo funil</h2>
 				<p className="text-sm text-neutral-500">Desenhe o fluxograma como quiser. O conteúdo de cada e-mail pode ser escrito depois.</p>

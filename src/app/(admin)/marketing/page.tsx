@@ -11,8 +11,9 @@ import { SendingPanel } from "@/components/marketing/sending-panel";
 import { TemplateManager } from "@/components/marketing/template-manager";
 import { WhatsAppPanel } from "@/components/marketing/whatsapp-panel";
 import { Button } from "@/components/ui/button";
+import { AiSettingsPanel } from "@/components/marketing/ai-settings-panel";
 
-const TABS = [{ key: "templates", label: "Modelos" }, { key: "contacts", label: "Contatos" }, { key: "capture", label: "Captura" }, { key: "campaigns", label: "Campanhas" }, { key: "flows", label: "Funis" }, { key: "sending", label: "Envio" }, { key: "whatsapp", label: "WhatsApp" }, { key: "backup", label: "Backup" }, { key: "help", label: "Ajuda" }] as const;
+const TABS = [{ key: "templates", label: "Modelos" }, { key: "contacts", label: "Contatos" }, { key: "capture", label: "Captura" }, { key: "campaigns", label: "Campanhas" }, { key: "flows", label: "Funis" }, { key: "sending", label: "Envio" }, { key: "whatsapp", label: "WhatsApp" }, { key: "ai", label: "IA" }, { key: "backup", label: "Backup" }, { key: "help", label: "Ajuda" }] as const;
 
 export default function MarketingPage() {
 	const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("templates");
@@ -31,7 +32,7 @@ export default function MarketingPage() {
 					}}>{item.label}</Button>
 				))}
 			</div>
-			{tab === "templates" ? <TemplateManager /> : tab === "contacts" ? <ContactManager onFormCreated={editForm} /> : tab === "capture" ? <CaptureManager editId={formId} onEdit={setFormId} /> : tab === "campaigns" ? <CampaignManager /> : tab === "flows" ? <FlowManager /> : tab === "whatsapp" ? <WhatsAppPanel /> : tab === "backup" ? <BackupPanel /> : tab === "help" ? <HelpPanel /> : <SendingPanel />}
+			{tab === "templates" ? <TemplateManager /> : tab === "contacts" ? <ContactManager onFormCreated={editForm} /> : tab === "capture" ? <CaptureManager editId={formId} onEdit={setFormId} /> : tab === "campaigns" ? <CampaignManager /> : tab === "flows" ? <FlowManager /> : tab === "ai" ? <AiSettingsPanel /> : tab === "whatsapp" ? <WhatsAppPanel /> : tab === "backup" ? <BackupPanel /> : tab === "help" ? <HelpPanel /> : <SendingPanel />}
 		</div>
 	);
 }
