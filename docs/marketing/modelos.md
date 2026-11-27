@@ -8,6 +8,10 @@ Aparecem em **Marketing → Criar → Modelos** e dentro da caixa de e-mail do f
 
 Em **Modelos**, preencha uma vez o nome (empresa ou pessoa), o contato e o aviso legal. **Salvar e aplicar em todos** troca o rodapé de todos os modelos e dos funis e campanhas ainda não concluídos, mesmo ativos. O que já foi enviado não muda. Enquanto não preencher, cada modelo tem o seu rodapé.
 
+## Link de descadastro
+
+Entra sozinho no fim de todo e-mail de marketing, com um endereço próprio para cada pessoa, junto com o cabeçalho de descadastro em um clique. Não há variável para escrever. Inserido pelo compositor do e-mail comum, o modelo não leva o link, porque não é envio de marketing.
+
 ## IA escolhe
 
 Escreva para que é o e-mail e clique em **IA escolhe** (precisa da chave em **Marketing → IA**). A IA só aponta um dos modelos da lista; não altera o texto.

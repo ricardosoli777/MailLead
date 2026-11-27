@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import type { Footer } from "@/lib/marketing/footer";
-import { renderHtml, renderText } from "@/lib/marketing/render";
+import { PREVIEW_UNSUBSCRIBE, renderHtml, renderText } from "@/lib/marketing/render";
 import type { Block, Design, Template } from "@/lib/marketing/types";
 import { marketingRequest } from "./marketing-request";
 import type { Draft } from "./template-manager";
@@ -201,6 +201,7 @@ export function TemplateEditor({ initial, onClose, onSaved, stickyBar }: { initi
 
 			<section className="space-y-3 rounded-3xl bg-white p-6">
 				<Label>Rodapé (obrigatório)</Label>
+				<p className="text-sm text-neutral-500">O link <strong>Descadastre-se aqui</strong> entra sozinho no fim de todo e-mail de marketing, um para cada pessoa. Não precisa escrever nada.</p>
 				{shared ? (
 					<p className="text-sm text-neutral-500">Usa os dados de <strong>Modelos → Dados do rodapé</strong>, os mesmos em todos os e-mails. A prévia abaixo já mostra.</p>
 				) : (
@@ -224,10 +225,10 @@ export function TemplateEditor({ initial, onClose, onSaved, stickyBar }: { initi
 					</span>
 				</div>
 				{view === "text" ? (
-					<pre className="whitespace-pre-wrap rounded-xl bg-neutral-50 p-4 text-sm text-neutral-800">{renderText(design, variables)}</pre>
+					<pre className="whitespace-pre-wrap rounded-xl bg-neutral-50 p-4 text-sm text-neutral-800">{renderText(design, variables, PREVIEW_UNSUBSCRIBE)}</pre>
 				) : (
 					// An empty sandbox: no scripts, no same-origin access, links stay inert.
-					<iframe title="Pré-visualização do e-mail" sandbox="" srcDoc={renderHtml(design, variables)} className="mx-auto block h-[600px] w-full rounded-xl border border-neutral-200" style={{ maxWidth: view === "mobile" ? 375 : undefined }} />
+					<iframe title="Pré-visualização do e-mail" sandbox="" srcDoc={renderHtml(design, variables, PREVIEW_UNSUBSCRIBE)} className="mx-auto block h-[600px] w-full rounded-xl border border-neutral-200" style={{ maxWidth: view === "mobile" ? 375 : undefined }} />
 				)}
 				<div className="flex flex-wrap items-end gap-2">
 					<div className="min-w-56 flex-1">

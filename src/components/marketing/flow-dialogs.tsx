@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import type { FlowDraft, FlowNode, StepStats, StepType } from "@/lib/marketing/flows-types";
 import { MAX_WAIT, STEP_LABELS, WAIT_UNITS } from "@/lib/marketing/flows-utils";
-import { renderHtml } from "@/lib/marketing/render";
+import { PREVIEW_UNSUBSCRIBE, renderHtml } from "@/lib/marketing/render";
 import type { Template } from "@/lib/marketing/types";
 import { AudioRecorder } from "./audio-recorder";
 import { STEP_STYLE } from "./flow-nodes";
@@ -129,7 +129,7 @@ function EmailFields({ step, templates, readOnly, onChange, onCreateContent, onE
 				<p className="text-xs font-semibold text-neutral-700">Conteúdo do e-mail</p>
 				{template ? (
 					<>
-						<iframe title="Prévia do e-mail" sandbox="" srcDoc={renderHtml(template.design, {})} className="h-48 w-full rounded-lg border border-neutral-200" />
+						<iframe title="Prévia do e-mail" sandbox="" srcDoc={renderHtml(template.design, {}, PREVIEW_UNSUBSCRIBE)} className="h-48 w-full rounded-lg border border-neutral-200" />
 						{!readOnly && <Button type="button" size="sm" variant="outline" onClick={onEditContent}>Editar conteúdo</Button>}
 					</>
 				) : !readOnly && (

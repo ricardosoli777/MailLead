@@ -96,6 +96,9 @@ function renderBlock(block: Block, accent: string, fill: (value: string) => stri
 
 const accentOf = (design: Design) => (/^#[0-9a-f]{6}$/i.test(design.accent) ? design.accent : "#0b57d0");
 
+/** Stands in for each person's own link in previews, so the footer is seen as it will arrive. */
+export const PREVIEW_UNSUBSCRIBE = "https://exemplo.invalid/descadastro";
+
 export function renderHtml(design: Design, variables: Record<string, string> = {}, unsubscribeUrl = ""): string {
 	const fill = (value: string) => applyVariables(value, variables);
 	const accent = accentOf(design);

@@ -19,6 +19,7 @@ const TOPICS: Topic[] = [
 		steps: [
 			"Em Modelos, escolha um pronto pelo uso (boas-vindas, conteúdo, eventos, vendas, clientes, reativação, avisos) ou escreva para que é e clique em IA escolhe.",
 			"Em Modelos, preencha os Dados do rodapé uma vez: valem para todos os e-mails.",
+			"O link Descadastre-se aqui entra sozinho no fim de todo e-mail de marketing. Não precisa escrever nada.",
 			"Troque o que está em [MAIÚSCULAS] e o endereço exemplo.com. O funil não ativa enquanto sobrar algum.",
 			"Com um funil ativo, os números da tela de Funis se atualizam sozinhos a cada 10 segundos.",
 			"Monte com blocos: título, texto, imagem, botão, vídeo ou áudio (viram capa com link) e divisor.",

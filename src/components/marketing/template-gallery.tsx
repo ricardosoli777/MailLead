@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Footer } from "@/lib/marketing/footer";
-import { renderHtml } from "@/lib/marketing/render";
+import { PREVIEW_UNSUBSCRIBE, renderHtml } from "@/lib/marketing/render";
 import { CATEGORIES, STARTERS, type CategoryId, type Starter } from "@/lib/marketing/starters";
 import { readAiSettings } from "./ai-store";
 import { marketingRequest } from "./marketing-request";
@@ -68,7 +68,7 @@ export function TemplateGallery({ onChoose }: { onChoose: (starter: Starter) => 
 					<li key={item.key} data-starter={item.key} className={`space-y-2 rounded-2xl border bg-white p-3 ${pick?.key === item.key ? "border-blue-500 ring-2 ring-blue-100" : "border-neutral-200"} ${seen === item.key ? "sm:col-span-2" : ""}`}>
 						<p className="flex items-center gap-2 text-sm font-medium text-neutral-900"><span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.design.accent }} />{item.name}</p>
 						<p className="text-xs text-neutral-500">{item.use}</p>
-						{seen === item.key && <iframe title={`Prévia: ${item.name}`} sandbox="" srcDoc={renderHtml(footer ? { ...item.design, footer } : item.design, {})} className="h-72 w-full rounded-lg border border-neutral-200" />}
+						{seen === item.key && <iframe title={`Prévia: ${item.name}`} sandbox="" srcDoc={renderHtml(footer ? { ...item.design, footer } : item.design, {}, PREVIEW_UNSUBSCRIBE)} className="h-72 w-full rounded-lg border border-neutral-200" />}
 						<div className="flex gap-2">
 							<Button type="button" size="sm" onClick={() => onChoose(item)}>Usar este</Button>
 							<Button type="button" size="sm" variant="ghost" onClick={() => setSeen(seen === item.key ? "" : item.key)}>{seen === item.key ? "Fechar prévia" : "Ver"}</Button>
