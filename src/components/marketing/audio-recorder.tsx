@@ -86,10 +86,10 @@ export function AudioRecorder({ value, onChange }: { value: File | null; onChang
 				)}
 			</div>
 			{error && <p role="alert" className="text-xs text-red-700">{error}</p>}
-			{preview && !recording && (
+			{value && preview && !recording && (
 				<div className="flex flex-wrap items-center gap-2">
 					<audio controls src={preview} className="h-10 max-w-full flex-1" />
-					<a href={preview} download={value!.name} className="text-xs text-blue-700 underline">Baixar</a>
+					<a href={preview} download={value.name} className="text-xs text-blue-700 underline">Baixar</a>
 					<Button type="button" size="sm" variant="ghost" aria-label="Descartar áudio" onClick={() => onChange(null)}><Trash2 className="h-4 w-4" /></Button>
 				</div>
 			)}
