@@ -11,6 +11,7 @@ import type { Footer } from "@/lib/marketing/footer";
 import { PREVIEW_UNSUBSCRIBE, renderHtml, renderText } from "@/lib/marketing/render";
 import type { Block, Design, Template } from "@/lib/marketing/types";
 import { marketingRequest } from "./marketing-request";
+import { VariablePicker } from "./variable-picker";
 import type { Draft } from "./template-manager";
 
 const NEW_BLOCKS: { label: string; block: Block }[] = [
@@ -25,13 +26,22 @@ const NEW_BLOCKS: { label: string; block: Block }[] = [
 
 const TITLES: Record<Block["type"], string> = { heading: "Título", text: "Texto", image: "Imagem", button: "Botão", media: "Vídeo / áudio", divider: "Divisor" };
 
-function Field({ label, value, onChange, multiline, placeholder }: { label: string; value: string; onChange: (value: string) => void; multiline?: boolean; placeholder?: string }) {
+function Field({ label, value, onChange, multiline, placeholder, variables }: { label: string; value: string; onChange: (value: string) => void; multiline?: boolean; placeholder?: string; variables?: boolean }) {
 	const Control = multiline ? Textarea : Input;
+	// Where the cursor was when the field was left, so the variable lands there.
+	const cursor = useRef<number | null>(null);
 	return (
-		<label className="block space-y-1">
-			<span className="block text-xs font-medium text-neutral-600">{label}</span>
-			<Control value={value} placeholder={placeholder} rows={multiline ? 4 : undefined} onChange={(event) => onChange(event.target.value)} />
-		</label>
+		<div className="space-y-1">
+			<label className="block space-y-1">
+				<span className="block text-xs font-medium text-neutral-600">{label}</span>
+				<Control value={value} placeholder={placeholder} rows={multiline ? 4 : undefined} onChange={(event) => onChange(event.target.value)} onBlur={(event: { target: { selectionStart: number | null } }) => { cursor.current = event.target.selectionStart; }} />
+			</label>
+			{variables && <VariablePicker label={label} onPick={(code) => {
+				const at = Math.min(cursor.current ?? value.length, value.length);
+				onChange(value.slice(0, at) + code + value.slice(at));
+				cursor.current = at + code.length;
+			}} />}
+		</div>
 	);
 }
 
@@ -141,13 +151,13 @@ export function TemplateEditor({ initial, onClose, onSaved, stickyBar }: { initi
 
 			<section className="space-y-3 rounded-3xl bg-white p-6">
 				<Field label="Nome do modelo" value={draft.name} onChange={(name) => setDraft((current) => ({ ...current, name }))} />
-				<Field label="Assunto" value={draft.subject} onChange={(subject) => setDraft((current) => ({ ...current, subject }))} />
-				<Field label="Prévia (texto que aparece ao lado do assunto)" value={design.preheader} onChange={(preheader) => setDesign({ preheader })} />
+				<Field variables label="Assunto" value={draft.subject} onChange={(subject) => setDraft((current) => ({ ...current, subject }))} />
+				<Field variables label="Prévia (texto que aparece ao lado do assunto)" value={design.preheader} onChange={(preheader) => setDesign({ preheader })} />
 				<label className="flex items-center gap-3 text-xs font-medium text-neutral-600">
 					Cor de destaque
 					<input type="color" value={design.accent} onChange={(event) => setDesign({ accent: event.target.value })} />
 				</label>
-				<p className="text-xs text-neutral-500">Use {"{{nome|cliente}}"} para o nome do destinatário, com um texto reserva.</p>
+				<p className="text-xs text-neutral-500">Em <strong>Inserir variável</strong> você escolhe o que usar. Em {"{{nome|cliente}}"}, o que vem depois da barra aparece quando o dado está vazio.</p>
 			</section>
 
 			{design.blocks.map((block, index) => (
@@ -160,7 +170,7 @@ export function TemplateEditor({ initial, onClose, onSaved, stickyBar }: { initi
 							<Button type="button" size="sm" variant="outline" onClick={() => setDesign({ blocks: design.blocks.filter((_, i) => i !== index) })}>Remover</Button>
 						</span>
 					</div>
-					{(block.type === "heading" || block.type === "text") && <Field label="Conteúdo" multiline={block.type === "text"} value={block.text} onChange={(text) => setBlock(index, { text })} />}
+					{(block.type === "heading" || block.type === "text") && <Field variables label="Conteúdo" multiline={block.type === "text"} value={block.text} onChange={(text) => setBlock(index, { text })} />}
 					{block.type === "text" && (
 						<div className="flex flex-wrap items-center gap-2">
 								<Button type="button" size="sm" variant="outline" onClick={() => setBlock(index, { text: `${block.text}${block.text && !/\s$/.test(block.text) ? " " : ""}[clique aqui](https://seu-endereco.com)` })}>+ Link no texto</Button>
@@ -176,7 +186,7 @@ export function TemplateEditor({ initial, onClose, onSaved, stickyBar }: { initi
 					)}
 					{block.type === "button" && (
 						<>
-							<Field label="Texto do botão" value={block.label} onChange={(label) => setBlock(index, { label })} />
+							<Field variables label="Texto do botão" value={block.label} onChange={(label) => setBlock(index, { label })} />
 							<Field label="Link" value={block.url} onChange={(url) => setBlock(index, { url })} />
 						</>
 					)}
@@ -201,14 +211,14 @@ export function TemplateEditor({ initial, onClose, onSaved, stickyBar }: { initi
 
 			<section className="space-y-3 rounded-3xl bg-white p-6">
 				<Label>Rodapé (obrigatório)</Label>
-				<p className="text-sm text-neutral-500">O link <strong>Descadastre-se aqui</strong> entra sozinho no fim de todo e-mail de marketing, um para cada pessoa. Não precisa escrever nada.</p>
+				<p className="text-sm text-neutral-500">O link <strong>Descadastre-se aqui</strong> entra sozinho no fim de todo e-mail de marketing, um para cada pessoa. Para colocá-lo também no meio do texto, use a variável <strong>Link de descadastro</strong>.</p>
 				{shared ? (
 					<p className="text-sm text-neutral-500">Usa os dados de <strong>Modelos → Dados do rodapé</strong>, os mesmos em todos os e-mails. A prévia abaixo já mostra.</p>
 				) : (
 					<>
 						<Field label="Empresa ou remetente" value={design.footer.company} onChange={(company) => setDesign({ footer: { ...design.footer, company } })} />
 						<Field label="Contato" value={design.footer.contact} onChange={(contact) => setDesign({ footer: { ...design.footer, contact } })} />
-						<Field label="Aviso legal" multiline value={design.footer.disclaimer} onChange={(disclaimer) => setDesign({ footer: { ...design.footer, disclaimer } })} />
+						<Field variables label="Aviso legal" multiline value={design.footer.disclaimer} onChange={(disclaimer) => setDesign({ footer: { ...design.footer, disclaimer } })} />
 					</>
 				)}
 			</section>

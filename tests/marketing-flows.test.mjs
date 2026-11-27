@@ -462,3 +462,41 @@ test("a person can sign, with address and rights line; empty fields stay out", a
 	assert.match(text, /© \d{4} Ana Lima\. Todos os direitos reservados\./);
 	assert.equal(text.match(/Ana Lima/g).length, 2);
 });
+
+test("the owner's data and the unsubscribe link can be written anywhere, in the text", async () => {
+	const render = await bundle("src/lib/marketing/render.ts", "vars.mjs");
+	const parsed = render.parseDesign({
+		blocks: [{ type: "text", text: "Sou {{remetente_nome}}, de {{remetente_cidade}}. [Sair]({{link_descadastro}}) ou {{link_descadastro}}." }],
+		footer: { company: "Loja", firstName: "Ana", city: "Santos", contact: "oi@loja.test", disclaimer: "Cadastro em {{ano}}." },
+	});
+	const url = "https://mail.test/u/abc?c=1";
+	const message = render.renderMarketingEmail(parsed.design, "Oi de {{remetente_empresa}}", { remetente_nome: "Intruso" }, url);
+	assert.equal(message.subject, "Oi de Loja");
+	assert.match(message.text, /Sou Ana, de Santos\. Sair \(https:\/\/mail\.test\/u\/abc\?c=1\) ou Descadastre-se aqui/);
+	assert.match(message.html, /<a href="https:\/\/mail\.test\/u\/abc\?c=1"[^>]*>Sair<\/a>/);
+	// Ordinary mail has no unsubscribe link: no broken mention is left behind.
+	assert.doesNotMatch(render.renderText(parsed.design), /link_descadastro|\[Sair\]|\{\{/);
+});
+
+test("the footer written in the editor keeps its formatting, and nothing else gets in", async () => {
+	const render = await bundle("src/lib/marketing/render.ts", "rich.mjs");
+	const html = '<div style="text-align: center; position: fixed"><b>{{remetente_empresa}}</b> <i onclick="x()">oi</i></div><script>alert(1)</script><img src=x onerror=y><div><a href="javascript:alert(1)">ruim</a> <a href="https://a.test/?x=1&amp;y=2">site</a></div><div>Olá {{nome}}</div></td></table><font color="#ff0000">cor</font><u>aberto';
+	const parsed = render.parseDesign({ blocks: [], footer: { company: "Loja", contact: "", disclaimer: "", html } });
+	const stored = parsed.design.footer.html;
+	assert.doesNotMatch(stored, /script|alert|onclick|onerror|<img|javascript|position|<\/td|<font/);
+	assert.match(stored, /<div style="text-align:center"><b>\{\{remetente_empresa\}\}<\/b>/);
+	assert.match(stored, /<span style="color:#ff0000">cor<\/span><u>aberto<\/u>$/);
+	const url = "https://mail.test/u/abc";
+	const message = render.renderMarketingEmail(parsed.design, "Oi", { nome: '<a href="https://evil.test">x</a>' }, url);
+	assert.match(message.html, /<b>Loja<\/b>/);
+	assert.doesNotMatch(message.html, /<a href="https:\/\/evil/);
+	assert.match(message.html, /href="https:\/\/a\.test\/\?x=1&amp;y=2"/);
+	assert.match(message.html, /<br><a href="https:\/\/mail\.test\/u\/abc"[^>]*>Descadastre-se aqui<\/a>/);
+	assert.match(message.text, /Loja oi\nruim site \(https:\/\/a\.test/);
+	// Placed by hand, the way out is not repeated.
+	const placed = render.parseDesign({ blocks: [], footer: { html: '<div>Sair: {{link_descadastro}} ou <a href="{{link_descadastro}}">aqui</a></div>' } });
+	const out = render.renderMarketingEmail(placed.design, "Oi", {}, url);
+	assert.equal(out.html.match(/mail\.test\/u\/abc/g).length, 2);
+	assert.doesNotMatch(out.text, /Descadastre-se aqui: https[^\n]*\n\nDescadastre/);
+	assert.ok(render.parseDesign({ blocks: [], footer: { html: "<div><br></div>" } }).error);
+});

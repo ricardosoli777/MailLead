@@ -21,6 +21,8 @@ export type Footer = {
 	country?: string;
 	/** Adds "© year Name. Todos os direitos reservados." */
 	rights?: boolean;
+	/** The footer as written in the editor. When present it replaces the lines built from the data. */
+	html?: string;
 };
 
 export type Design = { accent: string; preheader: string; blocks: Block[]; footer: Footer };

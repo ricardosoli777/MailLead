@@ -5,7 +5,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ChevronRight, FileText, Plus, Trash2 } from "@/components/icons";
 import { useLanguage } from "@/components/language-provider";
 import { authFetch } from "@/lib/auth/client";
-import { applyVariables, renderHtml } from "@/lib/marketing/render";
+import { applyVariables, renderHtml, senderVariables } from "@/lib/marketing/render";
 import type { Template } from "@/lib/marketing/types";
 import { textToHtml } from "./rich-text-utils";
 import type { ComposeTemplate, TemplateMenuProps } from "./template-types";
@@ -49,7 +49,7 @@ export function TemplateMenu({ onApply, onNew }: TemplateMenuProps) {
 					>
 						<div className="min-h-0 flex-1 overflow-y-auto">
 							{designed.map((template) => (
-								<DropdownMenu.Item key={template.id} onSelect={() => onApply({ title: applyVariables(template.subject), html: renderHtml(template.design) })} className={itemClass}>
+								<DropdownMenu.Item key={template.id} onSelect={() => onApply({ title: applyVariables(template.subject, senderVariables(template.design.footer)), html: renderHtml(template.design) })} className={itemClass}>
 									<span className="whitespace-normal break-words">{template.name}</span>
 								</DropdownMenu.Item>
 							))}

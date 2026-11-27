@@ -1,14 +1,15 @@
 "use client";
 
-// Who sends the e-mails: filled in once, written at the bottom of all of them.
+// Who sends the e-mails: the data once, and a footer written freely with it, on all of them.
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import type { Footer } from "@/lib/marketing/footer";
-import { STARTERS } from "@/lib/marketing/starters";
+import { PREVIEW_UNSUBSCRIBE, renderHtml, senderVariables } from "@/lib/marketing/render";
+import { FooterEditor } from "./footer-editor";
 import { marketingRequest } from "./marketing-request";
+import { SENDER_CODES } from "./variable-picker";
 
 const FIELDS = [
 	{ key: "firstName", label: "Nome", wide: "sm:col-span-3", max: 100 },
@@ -22,14 +23,28 @@ const FIELDS = [
 	{ key: "contact", label: "Contato (e-mail, telefone, site)", wide: "sm:col-span-6", max: 300 },
 ] as const;
 
+const NOTICE = "Você recebeu esta mensagem porque se cadastrou ou é cliente.";
+const text = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** What the editor opens with before anything was written in it. */
+const starting = (footer?: Footer) => [
+	footer && !footer.company ? "<div><b>{{remetente_nome}} {{remetente_sobrenome}}</b></div>" : "<div><b>{{remetente_empresa}}</b></div>",
+	// What an earlier footer already showed stays.
+	footer?.address ? "<div>{{remetente_endereco}}</div>" : "",
+	footer?.zip || footer?.city || footer?.state || footer?.country ? `<div>${(["zip", "city", "state", "country"] as const).filter((key) => footer[key]).map((key) => SENDER_CODES[key]).join(" - ")}</div>` : "",
+	"<div>{{remetente_contato}}</div>",
+	`<div>${text(footer?.disclaimer || NOTICE)}</div>`,
+	!footer || footer.rights ? `<div>© {{ano}} ${footer && !footer.company ? "{{remetente_nome}}" : "{{remetente_empresa}}"}. Todos os direitos reservados.</div>` : "",
+].join("");
+
 export function FooterSettings({ onSaved }: { onSaved: () => void }) {
-	const [footer, setFooter] = useState<Footer>({ company: "", contact: "", disclaimer: STARTERS[0].design.footer.disclaimer });
+	const [footer, setFooter] = useState<Footer>({ company: "", contact: "", disclaimer: "", html: starting() });
 	const [status, setStatus] = useState<{ error: boolean; text: string } | null>(null);
 	const [busy, setBusy] = useState(false);
 
 	useEffect(() => {
 		void marketingRequest<{ footer: Footer | null }>("/api/marketing/footer")
-			.then((data) => data.footer && setFooter(data.footer))
+			.then((data) => data.footer && setFooter({ ...data.footer, html: data.footer.html || starting(data.footer) }))
 			.catch((error: Error) => setStatus({ error: true, text: error.message }));
 	}, []);
 
@@ -47,35 +62,46 @@ export function FooterSettings({ onSaved }: { onSaved: () => void }) {
 		}
 	}
 
-	const filled = (footer.company.trim() || footer.firstName?.trim()) && footer.contact.trim() && footer.disclaimer.trim();
+	// A variable written in the footer whose data was left blank would leave a hole.
+	const values = senderVariables(footer);
+	const missing = FIELDS.filter(({ key }) => {
+		const code = SENDER_CODES[key];
+		return footer.html?.includes(code) && !values[code.slice(2, -2)];
+	}).map((item) => item.label);
+	const written = (footer.html ?? "").replace(/<[^>]*>|&nbsp;/g, "").trim();
+
 	return (
 		<section className="rounded-3xl bg-white p-6">
-			<form className="space-y-3" onSubmit={(event) => {
+			<form className="space-y-4" onSubmit={(event) => {
 				event.preventDefault();
-				if (filled) void save();
+				if (written) void save();
 			}}>
 				<div>
 					<Label>Dados do rodapé</Label>
-					<p className="text-sm text-neutral-500">Preencha uma vez: vale para todos os modelos, funis e campanhas ainda não concluídos.</p>
+					<p className="text-sm text-neutral-500">Preencha uma vez e monte o rodapé do seu jeito: vale para todos os modelos, funis e campanhas ainda não concluídos.</p>
 				</div>
 				<div className="grid gap-3 sm:grid-cols-6">
 					{FIELDS.map(({ key, label, wide, max }) => (
-						<label key={key} className={`block space-y-1 ${wide}`}>
-							<span className="block text-xs font-medium text-neutral-600">{label}</span>
-							<Input value={footer[key] ?? ""} maxLength={max} onChange={(event) => setFooter({ ...footer, [key]: event.target.value })} />
-						</label>
+						<div key={key} className={`space-y-1 ${wide}`}>
+							<label className="block space-y-1">
+								<span className="block text-xs font-medium text-neutral-600">{label}</span>
+								<Input value={footer[key] ?? ""} maxLength={max} onChange={(event) => setFooter({ ...footer, [key]: event.target.value })} />
+							</label>
+							<code className="block break-all text-[11px] text-neutral-400">{SENDER_CODES[key]}</code>
+						</div>
 					))}
 				</div>
-				<p className="text-xs text-neutral-500">Obrigatórios: empresa ou nome, contato e aviso legal. O que ficar vazio não aparece.</p>
-				<label className="block space-y-1">
-					<span className="block text-xs font-medium text-neutral-600">Aviso legal</span>
-					<Textarea rows={3} value={footer.disclaimer} maxLength={2000} onChange={(event) => setFooter({ ...footer, disclaimer: event.target.value })} />
-				</label>
-				<label className="flex items-center gap-2 text-sm">
-					<input type="checkbox" checked={footer.rights === true} onChange={(event) => setFooter({ ...footer, rights: event.target.checked })} />
-					<span>Mostrar “© {new Date().getFullYear()} … Todos os direitos reservados.”</span>
-				</label>
-				<Button type="submit" disabled={busy || !filled}>{busy ? "Salvando…" : "Salvar e aplicar em todos"}</Button>
+				<div className="space-y-1">
+					<span className="block text-xs font-medium text-neutral-600">Rodapé do e-mail</span>
+					<FooterEditor value={footer.html ?? ""} onChange={(html) => setFooter((current) => ({ ...current, html }))} />
+					<p className="text-xs text-neutral-500">Use <strong>Inserir variável</strong> para colocar os dados acima. O link de descadastro entra sozinho no fim, a não ser que você o coloque em outro lugar.</p>
+					{missing.length > 0 && <p className="text-xs text-amber-700">Sem preenchimento, mas usado no rodapé: {missing.join(", ")}.</p>}
+				</div>
+				<div className="space-y-1">
+					<span className="block text-xs font-medium text-neutral-600">Como vai chegar</span>
+					<iframe title="Prévia do rodapé" sandbox="" srcDoc={renderHtml({ accent: "#0b57d0", preheader: "", blocks: [], footer }, { nome: "Maria" }, PREVIEW_UNSUBSCRIBE)} className="h-56 w-full rounded-xl border border-neutral-200" />
+				</div>
+				<Button type="submit" disabled={busy || !written}>{busy ? "Salvando…" : "Salvar e aplicar em todos"}</Button>
 				{status && <p role="status" className={`text-sm ${status.error ? "text-red-600" : "text-green-700"}`}>{status.text}</p>}
 			</form>
 		</section>

@@ -1,3 +1,4 @@
+import { cleanRich, richHtml, richText } from "./rich-footer";
 import { MAX_BLOCKS, MAX_TEXT, type Block, type Design } from "./types";
 import { unsubscribeHeaders } from "./unsubscribe";
 
@@ -20,7 +21,7 @@ export function applyVariables(value: string, variables: Record<string, string> 
 const font = "font-family:Arial,Helvetica,sans-serif";
 
 /** `[word](address)` or a loose address. Variables inside, with their spaces, belong to the address. */
-const LINK = /\[([^\]\n]+)\]\(\s*((?:https?:\/\/|mailto:)(?:\{\{[^{}\n]*\}\}|[^\s(){}]|\([^\s()]*\))+)\s*\)|(https?:\/\/(?:\{\{[^{}\n]*\}\}|[^\s<>"{}])+)/g;
+const LINK = /\[([^\]\n]+)\]\(\s*((?:https?:\/\/|mailto:)(?:\{\{[^{}\n]*\}\}|[^\s(){}]|\([^\s()]*\))+|\{\{\s*link_descadastro\s*\}\})\s*\)|(https?:\/\/(?:\{\{[^{}\n]*\}\}|[^\s<>"{}])+|\{\{\s*link_descadastro\s*\}\})/g;
 
 type Piece = { text: string; url: string };
 
@@ -36,8 +37,11 @@ function pieces(value: string, fill: (value: string) => string): Piece[] {
 		// Punctuation closing a sentence is not part of a loose address.
 		const raw = loose ? loose.replace(/[.,;:!?)\]'’”]+$/, "") : address;
 		const url = safeUrl(fill(raw));
-		if (!url) continue;
-		out.push({ text: fill(value.slice(last, match.index)), url: "" }, { text: label ? fill(label) : url, url });
+		const leaving = raw.includes("link_descadastro");
+		// Where there is no unsubscribe link (ordinary mail), the whole mention is dropped.
+		if (!url && !leaving) continue;
+		out.push({ text: fill(value.slice(last, match.index)), url: "" });
+		if (url) out.push({ text: label ? fill(label) : leaving ? "Descadastre-se aqui" : url, url });
 		last = match.index + (loose ? raw.length : whole.length);
 	}
 	out.push({ text: fill(value.slice(last)), url: "" });
@@ -96,6 +100,17 @@ function renderBlock(block: Block, accent: string, fill: (value: string) => stri
 
 const accentOf = (design: Design) => (/^#[0-9a-f]{6}$/i.test(design.accent) ? design.accent : "#0b57d0");
 
+/** The owner's data as variables, from the footer that every e-mail carries. */
+export function senderVariables({ firstName, lastName, company, address, zip, city, state, country, contact }: Design["footer"], unsubscribeUrl = ""): Record<string, string> {
+	return {
+		remetente_nome: firstName ?? "", remetente_sobrenome: lastName ?? "", remetente_empresa: company,
+		remetente_endereco: address ?? "", remetente_cep: zip ?? "", remetente_cidade: city ?? "",
+		remetente_estado: state ?? "", remetente_pais: country ?? "", remetente_contato: contact,
+		ano: String(new Date().getFullYear()),
+		link_descadastro: safeUrl(unsubscribeUrl),
+	};
+}
+
 /** The footer above the legal notice: who signs and where to find them. The first line is the signature. */
 function signature({ company, contact, firstName, lastName, address, zip, city, state, country }: Design["footer"]): string[] {
 	const person = [firstName, lastName].filter(Boolean).join(" ");
@@ -106,26 +121,35 @@ function signature({ company, contact, firstName, lastName, address, zip, city, 
 const rightsLine = ({ rights, company, firstName, lastName }: Design["footer"]) =>
 	rights ? `© ${new Date().getFullYear()} ${company || [firstName, lastName].filter(Boolean).join(" ")}. Todos os direitos reservados.` : "";
 
+const footerLink = (href: string, fill: (value: string) => string, away: string) => (/^\{\{\s*link_descadastro\s*\}\}$/.test(href) ? away : safeUrl(fill(href)));
+
 /** Stands in for each person's own link in previews, so the footer is seen as it will arrive. */
 export const PREVIEW_UNSUBSCRIBE = "https://exemplo.invalid/descadastro";
 
 export function renderHtml(design: Design, variables: Record<string, string> = {}, unsubscribeUrl = ""): string {
-	const fill = (value: string) => applyVariables(value, variables);
+	// The owner's data wins over a contact field of the same name.
+	const all = { ...variables, ...senderVariables(design.footer, unsubscribeUrl) };
+	const fill = (value: string) => applyVariables(value, all);
 	const accent = accentOf(design);
 	const preheader = design.preheader ? `<div style="display:none;max-height:0;overflow:hidden">${esc(fill(design.preheader))}</div>` : "";
 	const { disclaimer } = design.footer;
 	const rights = rightsLine(design.footer);
-	const footer = [
+	const away = safeUrl(unsubscribeUrl);
+	const unsubscribe = away && `<a href="${esc(unsubscribeUrl)}" style="color:#5f6368;text-decoration:underline">Descadastre-se aqui</a>`;
+	const written = design.footer.html && richHtml(design.footer.html, { fill, link: (href) => footerLink(href, fill, away), leaving: away });
+	// There is always a way out: added unless the person already placed it in the footer.
+	const footer = written ? written + (away && !written.includes(`href="${esc(away)}"`) ? `<br>${unsubscribe}` : "") : [
 		...signature(design.footer).map((line, index) => (index ? esc(fill(line)) : `<strong>${esc(fill(line))}</strong>`)),
 		disclaimer && esc(fill(disclaimer)).replace(/\n/g, "<br>"),
 		rights && esc(rights),
-		safeUrl(unsubscribeUrl) && `<a href="${esc(unsubscribeUrl)}" style="color:#5f6368;text-decoration:underline">Descadastre-se aqui</a>`,
+		unsubscribe,
 	].filter(Boolean).join("<br>");
 	return `${preheader}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f8fc"><tr><td align="center" style="padding:24px 8px"><table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background-color:#ffffff;border-top:4px solid ${accent};border-radius:12px"><tr><td style="height:14px"></td></tr>${design.blocks.map((block) => renderBlock(block, accent, fill)).join("")}<tr><td style="padding:20px 32px 28px;border-top:1px solid #e8eaed;${font};font-size:12px;line-height:1.6;color:#5f6368;text-align:center">${footer}</td></tr></table></td></tr></table>`;
 }
 
 export function renderText(design: Design, variables: Record<string, string> = {}, unsubscribeUrl = ""): string {
-	const fill = (value: string) => applyVariables(value, variables);
+	const all = { ...variables, ...senderVariables(design.footer, unsubscribeUrl) };
+	const fill = (value: string) => applyVariables(value, all);
 	const parts = design.blocks.map((block) => {
 		switch (block.type) {
 			case "heading":
@@ -142,14 +166,17 @@ export function renderText(design: Design, variables: Record<string, string> = {
 				return "----------";
 		}
 	});
-	return [...parts, "--", ...signature(design.footer).map(fill), fill(design.footer.disclaimer), rightsLine(design.footer), safeUrl(unsubscribeUrl) && `Descadastre-se aqui: ${unsubscribeUrl}`].filter(Boolean).join("\n\n");
+	const away = safeUrl(unsubscribeUrl);
+	const written = design.footer.html && richText(design.footer.html, { fill, link: (href) => footerLink(href, fill, away), leaving: away });
+	const footer = written ? [written] : [...signature(design.footer).map(fill), fill(design.footer.disclaimer), rightsLine(design.footer)];
+	return [...parts, "--", ...footer, away && !written?.includes(away) && `Descadastre-se aqui: ${unsubscribeUrl}`].filter(Boolean).join("\n\n");
 }
 
 /** The only way to build a marketing message: it refuses to exist without a way out (U1). */
 export function renderMarketingEmail(design: Design, subject: string, variables: Record<string, string>, unsubscribeUrl: string) {
 	if (!/^https:\/\/\S+$/i.test(unsubscribeUrl)) throw new Error("Mensagem de marketing sem link de descadastro.");
 	return {
-		subject: applyVariables(subject, variables),
+		subject: applyVariables(subject, { ...variables, ...senderVariables(design.footer, unsubscribeUrl) }),
 		html: renderHtml(design, variables, unsubscribeUrl),
 		text: renderText(design, variables, unsubscribeUrl),
 		headers: unsubscribeHeaders(unsubscribeUrl),
@@ -192,6 +219,8 @@ export function parseDesign(input: unknown): { design: Design } | { error: strin
 		if (extra) footer[key] = extra;
 	}
 	if (value.footer?.rights === true) footer.rights = true;
-	if (!(footer.company || footer.firstName) || !footer.contact || !footer.disclaimer) return { error: "Preencha o rodapé: empresa ou nome, contato e aviso legal." };
+	const written = cleanRich(str(value.footer?.html, 8000), (href) => safeUrl(href));
+	if (written.text) footer.html = written.html;
+	if (!footer.html && (!(footer.company || footer.firstName) || !footer.contact || !footer.disclaimer)) return { error: "Preencha o rodapé: empresa ou nome, contato e aviso legal." };
 	return { design: { accent: accentOf({ accent: str(value.accent, 7) } as Design), preheader: str(value.preheader, 200), blocks, footer } };
 }

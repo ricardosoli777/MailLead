@@ -18,8 +18,9 @@ const TOPICS: Topic[] = [
 		title: "Criar um modelo de e-mail",
 		steps: [
 			"Em Modelos, escolha um pronto pelo uso (boas-vindas, conteúdo, eventos, vendas, clientes, reativação, avisos) ou escreva para que é e clique em IA escolhe.",
-			"Em Modelos, preencha os Dados do rodapé uma vez: valem para todos os e-mails.",
-			"O link Descadastre-se aqui entra sozinho no fim de todo e-mail de marketing. Não precisa escrever nada.",
+			"Em Modelos, preencha os Dados do rodapé e monte o rodapé no editor (negrito, alinhamento, cor, links e variáveis): vale para todos os e-mails.",
+			"O link Descadastre-se aqui entra sozinho no fim de todo e-mail de marketing.",
+			"Em cada campo do e-mail, Inserir variável escolhe dados do lead, os seus dados ou o link de descadastro.",
 			"Troque o que está em [MAIÚSCULAS] e o endereço exemplo.com. O funil não ativa enquanto sobrar algum.",
 			"Com um funil ativo, os números da tela de Funis se atualizam sozinhos a cada 10 segundos.",
 			"Monte com blocos: título, texto, imagem, botão, vídeo ou áudio (viram capa com link) e divisor.",

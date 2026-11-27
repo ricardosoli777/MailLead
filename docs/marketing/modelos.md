@@ -6,11 +6,24 @@ Aparecem em **Marketing → Criar → Modelos** e dentro da caixa de e-mail do f
 
 ## Dados do rodapé
 
-Em **Modelos**, preencha uma vez: nome, sobrenome, empresa, endereço, CEP, cidade, estado, país, contato, aviso legal e a opção "Todos os direitos reservados". Obrigatórios só a empresa ou o nome, o contato e o aviso legal; campo vazio não aparece. **Salvar e aplicar em todos** troca o rodapé de todos os modelos e dos funis e campanhas ainda não concluídos, mesmo ativos. O que já foi enviado não muda. Enquanto não preencher, cada modelo tem o seu rodapé.
+Em **Modelos**, preencha nome, sobrenome, empresa, endereço, CEP, cidade, estado, país e contato, e monte o **Rodapé do e-mail** no editor: negrito, itálico, sublinhado, riscado, alinhamento, lista, link, tamanho, cor e **Inserir variável**. **Salvar e aplicar em todos** troca o rodapé de todos os modelos e dos funis e campanhas ainda não concluídos, mesmo ativos. O que já foi enviado não muda.
+
+O HTML é reconstruído no servidor com uma lista curta de marcas e estilos (`rich-footer.ts`); o resto é descartado.
 
 ## Link de descadastro
 
-Entra sozinho no fim de todo e-mail de marketing, com um endereço próprio para cada pessoa, junto com o cabeçalho de descadastro em um clique. Não há variável para escrever. Inserido pelo compositor do e-mail comum, o modelo não leva o link, porque não é envio de marketing.
+Entra sozinho no fim de todo e-mail de marketing, com um endereço próprio para cada pessoa, junto com o cabeçalho de descadastro em um clique. Para repeti-lo no texto: `{{link_descadastro}}` ou `[sair da lista]({{link_descadastro}})`. Inserido pelo compositor do e-mail comum, o modelo não leva o link, porque não é envio de marketing.
+
+## Variáveis
+
+No editor, **Inserir variável** coloca o código onde está o cursor (assunto, prévia, títulos, textos, texto do botão e aviso legal).
+
+| Código | Valor |
+| --- | --- |
+| `{{nome\|cliente}}`, `{{email}}` | do lead (o texto depois da barra é a reserva) |
+| `{{remetente_nome}}`, `{{remetente_sobrenome}}`, `{{remetente_empresa}}` | seus, dos Dados do rodapé |
+| `{{remetente_endereco}}`, `{{remetente_cep}}`, `{{remetente_cidade}}`, `{{remetente_estado}}`, `{{remetente_pais}}`, `{{remetente_contato}}` | seus, dos Dados do rodapé |
+| `{{ano}}`, `{{link_descadastro}}` | ano atual e link da pessoa |
 
 ## IA escolhe
 
