@@ -91,11 +91,10 @@ O domínio novo **não** muda nada no Evo Go: o servidor continua `https://go.kl
 ## 9. Formulários e funis
 - [ ] Formulários: copie o **código novo** em Captura e troque nos sites. Teste um cadastro.
 - [ ] Integrações por API ou webhook: troque o endereço.
-- [ ] Funis: salve e ative de novo os que for usar; teste com **Testar**.
-- [ ] WhatsApp: nada muda no servidor. A instância `maillead` segue em `go.klead.com.br`, que é dividido com o CRM.
+- [ ] Funis: salve e ative de novo os que for usar; teste com **Testar**, informando o seu WhatsApp quando houver o passo **WhatsApp**.
 - [ ] Celular, agenda, contatos e programas de e-mail: reconfigure com o endereço novo.
 
-## 9. Limpeza (só depois de uns dias funcionando)
+## 10. Limpeza (só depois de uns dias funcionando)
 Cada item é listado e autorizado antes.
 
 - [ ] Apagar contatos, listas, campanhas e funis de teste.
