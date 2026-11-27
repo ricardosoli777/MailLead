@@ -23,6 +23,8 @@ const TOPICS: Topic[] = [
 			"Salve e envie um teste para você.",
 		],
 		tips: [
+			"Link no meio do texto: [clique aqui](https://seu-endereco.com), ou use o botão + Link no texto. Endereço solto também vira link.",
+			"Vídeo não toca dentro do e-mail: o bloco Vídeo mostra a capa com o link. Para algo se mexendo, envie um GIF no bloco de imagem.",
 			"Use {{nome|cliente}} para chamar pelo nome; quando não houver nome, aparece \"cliente\".",
 			"Um assunto claro, sem tudo em maiúsculas, ajuda a não cair no spam.",
 		],

@@ -58,3 +58,24 @@ test("T5 and T6: the four starter templates render to HTML and plain text", () =
 		assert.match(renderText(starter.design), /Nome da sua empresa/);
 	}
 });
+
+test("links inside the text: words and loose addresses, in both versions", () => {
+	const blocks = [{ type: "text", text: "Veja [o material](https://a.test/p?x=1&y=2).\nOu https://b.test/pagina. Fale: [aqui](mailto:oi@acme.test) [wiki](https://c.test/A_(b))" }];
+	const html = renderHtml(design(blocks));
+	assert.match(html, /<a href="https:\/\/a\.test\/p\?x=1&amp;y=2" [^>]*>o material<\/a>\./);
+	assert.match(html, /<a href="https:\/\/b\.test\/pagina" [^>]*>https:\/\/b\.test\/pagina<\/a>\. Fale/);
+	assert.match(html, /href="mailto:oi@acme\.test"/);
+	assert.match(html, /href="https:\/\/c\.test\/A_\(b\)"/);
+	assert.match(html, /<br>/);
+	const text = renderText(design(blocks));
+	assert.match(text, /Veja o material \(https:\/\/a\.test\/p\?x=1&y=2\)\./);
+	assert.match(text, /Ou https:\/\/b\.test\/pagina\. Fale: aqui \(mailto:oi@acme\.test\)/);
+});
+
+test("a contact's own data never becomes a link, and unsafe addresses stay as text", () => {
+	const block = [{ type: "text", text: "Oi {{nome|cliente}}, [sim](https://a.test/?n={{id|0}}) [não](javascript:alert(1))" }];
+	const html = renderHtml(design(block), { nome: "[Ganhe](https://golpe.test) https://golpe.test", id: "7" });
+	assert.doesNotMatch(html, /href="https:\/\/golpe/);
+	assert.match(html, /href="https:\/\/a\.test\/\?n=7"/);
+	assert.doesNotMatch(html, /href="javascript/);
+});

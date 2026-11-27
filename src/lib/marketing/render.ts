@@ -19,6 +19,39 @@ export function applyVariables(value: string, variables: Record<string, string> 
 
 const font = "font-family:Arial,Helvetica,sans-serif";
 
+/** `[word](address)` or a loose address. Variables inside, with their spaces, belong to the address. */
+const LINK = /\[([^\]\n]+)\]\(\s*((?:https?:\/\/|mailto:)(?:\{\{[^{}\n]*\}\}|[^\s(){}]|\([^\s()]*\))+)\s*\)|(https?:\/\/(?:\{\{[^{}\n]*\}\}|[^\s<>"{}])+)/g;
+
+type Piece = { text: string; url: string };
+
+/**
+ * Splits what the author wrote into plain text and links, and only then fills the variables: a
+ * contact's name comes from a public form, so it must never be able to create a link.
+ */
+function pieces(value: string, fill: (value: string) => string): Piece[] {
+	const out: Piece[] = [];
+	let last = 0;
+	for (const match of value.matchAll(LINK)) {
+		const [whole, label, address, loose] = match;
+		// Punctuation closing a sentence is not part of a loose address.
+		const raw = loose ? loose.replace(/[.,;:!?)\]'’”]+$/, "") : address;
+		const url = safeUrl(fill(raw));
+		if (!url) continue;
+		out.push({ text: fill(value.slice(last, match.index)), url: "" }, { text: label ? fill(label) : url, url });
+		last = match.index + (loose ? raw.length : whole.length);
+	}
+	out.push({ text: fill(value.slice(last)), url: "" });
+	return out;
+}
+
+const textHtml = (value: string, accent: string, fill: (value: string) => string) => pieces(value, fill)
+	.map((piece) => (piece.url ? `<a href="${esc(piece.url)}" style="color:${accent};text-decoration:underline">${esc(piece.text)}</a>` : esc(piece.text).replace(/\n/g, "<br>")))
+	.join("");
+
+const textPlain = (value: string, fill: (value: string) => string) => pieces(value, fill)
+	.map((piece) => (piece.url && piece.text !== piece.url ? `${piece.text} (${piece.url})` : piece.text))
+	.join("");
+
 function row(content: string, padding = "10px 32px"): string {
 	return `<tr><td style="padding:${padding};${font};font-size:15px;line-height:1.6;color:#202124">${content}</td></tr>`;
 }
@@ -36,7 +69,7 @@ function renderBlock(block: Block, accent: string, fill: (value: string) => stri
 		case "heading":
 			return row(`<h1 style="margin:0;font-size:24px;line-height:1.3;color:#202124">${esc(fill(block.text))}</h1>`);
 		case "text":
-			return row(esc(fill(block.text)).replace(/\n/g, "<br>"));
+			return row(textHtml(block.text, accent, fill));
 		case "image": {
 			const src = safeUrl(block.url, { images: true });
 			if (!src) return "";
@@ -82,8 +115,9 @@ export function renderText(design: Design, variables: Record<string, string> = {
 	const parts = design.blocks.map((block) => {
 		switch (block.type) {
 			case "heading":
-			case "text":
 				return fill(block.text);
+			case "text":
+				return textPlain(block.text, fill);
 			case "image":
 				return safeUrl(block.link) ? `${fill(block.alt)}: ${block.link}` : fill(block.alt);
 			case "button":

@@ -151,6 +151,12 @@ export function TemplateEditor({ initial, onClose, onSaved, stickyBar }: { initi
 						</span>
 					</div>
 					{(block.type === "heading" || block.type === "text") && <Field label="Conteúdo" multiline={block.type === "text"} value={block.text} onChange={(text) => setBlock(index, { text })} />}
+					{block.type === "text" && (
+						<div className="flex flex-wrap items-center gap-2">
+								<Button type="button" size="sm" variant="outline" onClick={() => setBlock(index, { text: `${block.text}${block.text && !/\s$/.test(block.text) ? " " : ""}[clique aqui](https://seu-endereco.com)` })}>+ Link no texto</Button>
+								<span className="text-xs text-neutral-500">Escreva a palavra entre [ ] e o endereço entre ( ). Um endereço solto também vira link.</span>
+							</div>
+						)}
 					{block.type === "image" && (
 						<>
 							<ImageField label="Imagem" value={block.url} onChange={(url) => setBlock(index, { url })} onError={fail} />
