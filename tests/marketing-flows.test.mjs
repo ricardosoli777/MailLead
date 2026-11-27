@@ -20,6 +20,7 @@ const store = await bundle("src/lib/marketing/contacts.ts", "contacts.mjs");
 const flows = await bundle("src/lib/marketing/flows.ts", "flows.mjs");
 const tree = await bundle("src/lib/marketing/flows-utils.ts", "tree.mjs");
 const engine = await bundle("src/lib/marketing/engine.ts", "engine.mjs");
+const testing = await bundle("src/lib/marketing/flow-test.ts", "flow-test.mjs");
 const campaigns = await bundle("src/lib/marketing/campaigns.ts", "campaigns.mjs");
 
 function database() {
@@ -401,4 +402,29 @@ test("short waits happen inside the pass; long ones are left for later", async (
 	await flows.runFlows(db, NOW + 40_000 + 120_000, 100, null, sleep);
 	assert.deepEqual(run(), ["done:null"]);
 	assert.equal(slept.length, 2);
+});
+
+test("the owner can test a live funnel with their own data, again and again", async () => {
+	const { db, id, tick, sent, tags } = await setup([email("mail1"), audio("step0001"), tag("tag01", "fim")]);
+	db.sqlite.prepare("INSERT INTO marketing_audio (id, name, content_type, size, created_at) VALUES ('aud1', 'a.ogg', 'audio/ogg', 1, 0)").run();
+	await engine.writeSetting(db, "whatsapp", { url: "https://go.example.com", token: "t" });
+	const me = { name: "Eu", email: "Eu@Gmail.com", phone: "11 99999-0000" };
+	assert.match((await testing.startFlowTest(db, id, me, NOW)).error, /Ative/);
+	await flows.activateFlow(db, id, NOW);
+	assert.match((await testing.startFlowTest(db, id, { ...me, phone: "" }, NOW)).error, /WhatsApp/);
+
+	const heard = [];
+	const sender = { connected: async () => true, send: async (phone) => heard.push(phone) };
+	for (const round of [0, 1]) {
+		const start = NOW + round * HOUR;
+		assert.equal((await testing.startFlowTest(db, id, me, start)).error, null);
+		await tick(start + 1000);
+		await flows.runFlows(db, start + 60_000, 100, sender);
+		const result = await testing.flowTestStatus(db, id, "eu@gmail.com");
+		assert.equal(result.done, true);
+		assert.deepEqual(result.steps.map((step) => step.text), ["enviado", "enviado"]);
+		assert.deepEqual(tags(), ["fim"]);
+	}
+	assert.equal(sent.length, 2);
+	assert.deepEqual(heard, ["5511999990000", "5511999990000"]);
 });

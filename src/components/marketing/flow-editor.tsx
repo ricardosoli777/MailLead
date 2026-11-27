@@ -14,6 +14,7 @@ import { addNode, canConnect, connect, createStep, graphErrors, insertOnEdge, la
 import { STARTERS } from "@/lib/marketing/starters";
 import type { Template } from "@/lib/marketing/types";
 import { PickDialog, StartDialog, StepDialog, type Option } from "./flow-dialogs";
+import { FlowTestDialog } from "./flow-test-dialog";
 import { CanvasActions, EDGE_TYPES, NODE_TYPES, STEP_STYLE, type Line, type LineData, type StartBox, type StepBox } from "./flow-nodes";
 import { marketingRequest } from "./marketing-request";
 import type { Draft } from "./template-manager";
@@ -37,6 +38,7 @@ type History = { draft: FlowDraft; past: FlowGraph[]; future: FlowGraph[] };
 type Opened =
 	| { kind: "step"; id: string }
 	| { kind: "start" }
+	| { kind: "test" }
 	| { kind: "pick"; from: string; branch: Branch; at?: Position }
 	| { kind: "pickLine"; line: LineData }
 	| null;
@@ -338,6 +340,7 @@ function Editor({ flow, lists, templates: initialTemplates, tags, onClose, onCha
 				{dirty && <span className="text-xs text-amber-700">alterações não salvas</span>}
 				<div className="ml-auto flex flex-wrap gap-2">
 					<Button type="button" size="sm" variant="ghost" className="text-red-600" disabled={busy} onClick={() => void remove()}>Apagar</Button>
+					<Button type="button" size="sm" variant="outline" onClick={() => setOpened({ kind: "test" })}>Testar</Button>
 					{readOnly ? (
 						<Button type="button" size="sm" variant="outline" disabled={busy} onClick={pause}>Pausar para editar</Button>
 					) : (
@@ -450,6 +453,7 @@ function Editor({ flow, lists, templates: initialTemplates, tags, onClose, onCha
 
 			{message && !content && <p role="status" className={`fixed inset-x-4 top-16 z-[140] mx-auto w-fit max-w-xl rounded-xl px-4 py-3 text-sm shadow-lg ${message.error ? "bg-red-50 text-red-800" : "bg-green-50 text-green-800"}`} onClick={() => setMessage(null)}>{message.text}</p>}
 
+			{opened?.kind === "test" && <FlowTestDialog flowId={flow.id} active={status === "active"} needsPhone={graph.nodes.some((node) => node.type === "whatsapp")} onClose={() => setOpened(null)} />}
 			{opened?.kind === "start" && <StartDialog draft={draft} lists={lists} tags={tags} readOnly={readOnly} onChange={patchDraft} onClose={() => setOpened(null)} />}
 			{opened?.kind === "pick" && <PickDialog types={PALETTE} onClose={() => setOpened(null)} onPick={(type) => add(type, opened.at ?? positionBelow(graph, opened.from, opened.branch), opened)} />}
 			{opened?.kind === "pickLine" && <PickDialog types={PALETTE.filter((type) => type !== "exit")} onClose={() => setOpened(null)} onPick={(type) => addLine(type, opened.line)} />}

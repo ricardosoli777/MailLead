@@ -25,3 +25,6 @@ Funil ativo não é editado: pause, mude e ative. Quem está num passo removido 
 
 ## Referência
 Funis prontos e objetivo vieram da comparação com o ActiveCampaign ([research.md](research.md)). Não há ainda: esperar até uma data ou condição, carrinho abandonado, "ir para", pontuação.
+
+## Testar
+O botão **Testar** (funil ativo) cadastra o próprio administrador como um lead (`POST /api/marketing/flows/[id]/test`, com confirmação de que os dados são dele), apaga o teste anterior daquela pessoa naquele funil e mostra cada envio e erro. As regras de envio continuam valendo (aquecimento, 8h às 20h no WhatsApp).

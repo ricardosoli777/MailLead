@@ -35,3 +35,6 @@ export type Flow = FlowDraft & {
 	counts: { active: number; done: number; goal: number; exited: number };
 	stats: Record<string, StepStats>;
 };
+
+/** Where a test of the funnel is. */
+export type FlowTestStatus = { now: string; done: boolean; steps: { name: string; text: string; tone: "ok" | "wait" | "error" }[] };

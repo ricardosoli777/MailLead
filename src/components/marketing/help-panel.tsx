@@ -78,7 +78,7 @@ const TOPICS: Topic[] = [
 			"Em WhatsApp, salve o endereço e o token da instância e envie um teste.",
 			"Em Captura, ligue \"Pedir WhatsApp\" no formulário e salve. Se já colou o código no site, copie de novo.",
 			"Em Funis, adicione o bloco \"Áudio no WhatsApp\" e grave ou envie o áudio dentro dele.",
-			"Salve e ative o funil. Para testar, cadastre-se no próprio formulário com o seu número.",
+			"Salve e ative o funil. Depois clique em Testar, dentro do funil, e cadastre-se com os seus dados.",
 		],
 		tips: [
 			"Só recebe quem marcou a autorização no formulário. Os outros seguem o funil sem o áudio.",
