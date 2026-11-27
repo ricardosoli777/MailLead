@@ -1,135 +1,118 @@
-<img src="public/icon-192.png" alt="Mailflare" width="96" />
+<img src="docs/marketing/brand/banner.png" alt="MailLead: e-mail, funis e WhatsApp para quem se cadastrou" width="100%" />
 
+# MailLead
 
-# Mailflare
+E-mail no seu domínio **e** automação de relacionamento, hospedados na sua própria conta Cloudflare.
 
-A self-hosted alternative to Google Workspace. Setup **custom domain Emails**, **Calendar, Drive, Booking** and **built-in AI agents**.
+O MailLead é um fork do [MailFlare](https://github.com/hieunc229/mailflare), com um aplicativo de **Marketing** construído por cima.
 
-Self-host it on Cloudflare or Docker. **Or try [Mailflare Cloud](https://cloud.mailflare.co?ref=github) with high-deliverable emails** from $4​
+> **Regra do produto:** só fala com quem se cadastrou. Sem listas frias e sem disparo em massa de e-mail ou de WhatsApp.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/hieunc229/mailflare)
+## Marketing
 
-## Screenshots
+| Área | O que faz |
+| --- | --- |
+| **Funis** | Fluxograma em tela cheia com caixas de e-mail, áudio no WhatsApp, espera (segundos a dias), condição, etiqueta e fim. Começa na entrada em uma lista ou ao receber uma etiqueta, com objetivo opcional. |
+| **Teste do funil** | Você se cadastra como um lead e acompanha o que saiu. O teste fica aberto até você encerrar, e os números da tela se atualizam sozinhos. |
+| **Modelos** | Editor por blocos e 22 e-mails prontos por uso (boas-vindas, conteúdo, eventos, vendas, clientes, reativação, avisos). A IA pode escolher o modelo. |
+| **Campanhas** | Envio para listas de inscritos, com revisão antes, aberturas, cliques e limite por pessoa. |
+| **Contatos e listas** | Registro de como cada pessoa aceitou, etiquetas, importação e exclusão a pedido. |
+| **Captura** | Formulários com confirmação por e-mail, API com chaves próprias e webhook assinado. |
+| **WhatsApp** | Mensagem de voz no funil pelo seu Evolution Go, só com aceite próprio, das 8h às 20h, com limite diário. Gravação pelo microfone. |
+| **IA** | Chat que desenha o funil e escreve os e-mails com OpenAI, Anthropic ou Google, inclusive a partir de documentos anexados. A chave fica só no seu navegador. |
+| **Envio** | Amazon SES, subdomínio separado, verificação de DNS, aquecimento, disjuntor por devoluções e reclamações, descadastro em um clique. |
+| **Backup** | Cópia diária dos dados de marketing e restauração que não desfaz descadastros. |
+
+O Marketing usa um banco próprio e só o administrador principal acessa.
+
+Guias: [funis](docs/marketing/funis.md) · [modelos](docs/marketing/modelos.md) · [captura](docs/marketing/captura.md) · [envio](docs/marketing/envio.md) · [WhatsApp](docs/marketing/whatsapp.md) · [IA](docs/marketing/ia.md) · [backup](docs/marketing/backup.md)
+
+### Ainda não tem
+
+- Resposta "SAIR" automática no WhatsApp (hoje é o botão **Parar WhatsApp** no contato).
+- Mensagem de texto no WhatsApp dentro do funil.
+- Adaptadores para plataformas de venda (Hotmart, Kiwify e outras).
+- Espera até uma data, testes A/B e pontuação de leads.
+
+## E-mail e o restante
+
+Herdado do MailFlare:
+
+- **E-mail** no seu domínio, com caixas pessoais ou compartilhadas e regras de entrada. Envio e recebimento por Cloudflare Email, Resend ou Amazon SES.
+- **Calendário, Agendamento e Drive.**
+- **Agentes de IA** para o e-mail e acesso por MCP.
+- **Admin:** usuários, 2FA, chaves de API, webhooks, auditoria e backups.
 
 <table>
   <tr>
-    <td align="center"><img src="screenshots/1.png" alt="Inbox" width="320"><br>Inbox</td>
-    <td align="center"><img src="screenshots/2.png" alt="Manage domains" width="320"><br>Domains</td>
-    <td align="center"><img src="screenshots/3.png" alt="Manage inboxes" width="320"><br>Mailboxes</td>
-  </tr>
-  <tr>
-    <td align="center"><img src="screenshots/4.png" alt="Calendar" width="320"><br>Calendar</td>
-    <td align="center"><img src="screenshots/5.png" alt="Booking" width="320"><br>Booking</td>
+    <td align="center"><img src="screenshots/1.png" alt="Caixa de entrada" width="320"><br>E-mail</td>
+    <td align="center"><img src="screenshots/4.png" alt="Calendário" width="320"><br>Calendário</td>
     <td align="center"><img src="screenshots/6.png" alt="Drive" width="320"><br>Drive</td>
   </tr>
 </table>
 
-## Features
+## Instalar na Cloudflare
 
-### Apps
-
-- **Email**: Custom domain mailboxes, personal or shared, with access you control. Send and receive with Cloudflare Email, Resend or Amazon SES.
-- **Routing rules**: Store, forward, reject or sort incoming mail, including a one-rule filter for newsletters and promotions.
-- **Calendar**: Repeating events with time zones. Attendees get email invitations.
-- **Booking**: Share a public link so anyone can book a free time on your calendar.
-- **Drive**: Store and share files.
-- **AI agents**: Search mail, draft replies and manage events. Connect other AI tools over MCP.
-
-### Technical
-
-- **Databases**: Cloudflare D1 (default), PostgreSQL, MySQL, Turso / libSQL, or a local SQLite file. Set `DATABASE_URL` to switch. Works with Supabase, Neon, PlanetScale, TiDB and more. See [Databases](docs/databases.md).
-- **File storage**: Cloudflare R2, Backblaze B2 or AWS S3.
-- **Hosting**: Cloudflare Workers or a single Docker container.
-- **Admin**: Users, API keys, webhooks, audit logs and backups.
-- **Import**: Bring in mail from IMAP, Gmail Takeout, `.eml` and `.mbox` files, and Google Calendar events, Google Contacts and Google Drive files from Takeout. See [Importing from Google Takeout](docs/import.md).
-
-Mailflare currently supports 34 languages, including English, Português (Brasil), Português (Portugal), Español, Français, Deutsch, Italiano, Nederlands, Polski, Українська, Русский, Türkçe, 中文（简体）, 日本語, 한국어, Bahasa Indonesia, Bahasa Melayu, Tiếng Việt, ไทย, हिन्दी, বাংলা, मराठी, తెలుగు, தமிழ், ગુજરાતી, ಕನ್ನಡ, മലയാളം, ਪੰਜਾਬੀ, සිංහල, Kiswahili, Hausa, plus العربية, اردو and فارسی (right-to-left).
-
-## Cost
-
-You can receive and send mail for free.
-
-- **Receiving**: Cloudflare Email Routing is free.
-- **Sending**: Use the free tier of Resend (3,000 emails a month) or Amazon SES. Cloudflare's own sending needs the $5/month Paid Worker plan.
-
-New Amazon SES accounts start in a sandbox. Ask AWS for production access to lift it. Prices change, so check [Resend](https://resend.com/pricing), [Amazon SES](https://aws.amazon.com/ses/pricing/) and [Cloudflare](https://developers.cloudflare.com/workers/platform/pricing/).
-
-## Deploy
-
-1. **Deploy the app.** Click **Deploy to Cloudflare**. Keep the app name `mailflare`, or it will break.
-2. **Finish setup.** Open the app at `/setup` and create your admin account.
-3. **Connect a domain.** Add a domain from the same Cloudflare account, then create your first mailbox.
-
-> **`CF_TOKEN` is required.** Create a scoped [Cloudflare API token](https://github.com/hieunc229/mailflare/issues/24#issuecomment-5523686105) with these permissions:
->
-> - All accounts: Email Sending:Edit, DNS Settings:Edit, Email Routing Addresses:Edit
-> - All zones: DNS Settings:Edit, Email Routing Rules:Edit, Zone Settings:Edit, DNS:Edit
-
-More options: [deployment guide](docs/deployment.md).
-
-### Deploy with an AI agent
-
-Paste this into an AI agent that has terminal access (Claude Code, Codex, Cursor and similar):
-
-```text
-Install Mailflare for me from https://github.com/hieunc229/mailflare on my Cloudflare account.
-
-1. Read README.md, docs/deployment.md and wrangler.jsonc first.
-2. Ask me for my Cloudflare account ID and two API tokens, using a secret input:
-   a deploy token (for Wrangler) and a runtime token (the Worker secret CF_TOKEN).
-   Never print them, commit them, or pass them as command arguments.
-3. Keep the Worker name exactly "mailflare". Create or reuse the D1 database
-   "mailflare", the R2 bucket "mailflare-raw", and the queues "mailflare-inbound",
-   "mailflare-outbound" and "mailflare-agent".
-4. Install dependencies, run `npm run deploy`, and set CF_TOKEN as a Worker secret.
-   Do not run remote database migrations yourself. The /setup page does that.
-5. Give me the app URL and anything I still need to do. I will open /setup, create
-   the admin account and connect my domain.
-```
-
-Token permissions and more options: [deployment guide](docs/deployment.md#deploy-with-an-ai-coding-agent).
-
-### Self-host with Docker
-
-Runs as one container on any server, with SQLite and local files.
+Precisa de uma conta Cloudflare com o domínio, Node.js e, para o marketing, uma conta Amazon SES.
 
 ```bash
-cp .env.docker.example .env.docker
-docker compose up -d --build
+git clone https://github.com/ricardosoli777/MailLead.git
+cd MailLead
+npm install
+npx wrangler login
+npx wrangler d1 create maillead-marketing
 ```
 
-Or skip the build and run the prebuilt image: `docker compose -f docker-compose.image.yml up -d`.
+1. Em `wrangler.jsonc`, troque o `database_id` de `MARKETING_DB` pelo do banco que você criou. Crie também o D1 `mailflare`, o bucket R2 `mailflare-raw` e as filas `mailflare-inbound`, `mailflare-outbound` e `mailflare-agent`.
+2. Mantenha o nome do Worker como `mailflare`.
+3. Publique e prepare o banco de marketing:
 
-See [self-hosting](docs/self-hosting.md).
+```bash
+npm run deploy
+npx wrangler d1 migrations apply MARKETING_DB --remote
+npx wrangler secret put CF_TOKEN
+```
 
-## Local development
+4. Abra `/setup`, crie o administrador, ative o 2FA ou uma chave de acesso e conecte o domínio.
+5. Em **Marketing → Envio**, configure o remetente em um subdomínio só de marketing.
+
+Permissões do `CF_TOKEN` e outras opções: [guia de publicação](docs/deployment.md).
+
+## Atualizações
+
+> **Não use o botão de atualizar do Admin nem o workflow `Dashboard Update`.** Eles trocam todo o código pelo do MailFlare original e removem o Marketing.
+
+Para trazer correções do projeto de origem, faça o merge à mão e revise os conflitos:
+
+```bash
+git remote add upstream https://github.com/hieunc229/mailflare.git
+git fetch upstream
+git merge upstream/main
+```
+
+## Desenvolvimento local
 
 ```bash
 cp .dev.vars.example .dev.vars
 npm install
 npm run db:migrate:local
+npx wrangler d1 migrations apply MARKETING_DB --local
 npm run dev
 ```
 
-Add your Cloudflare credentials to `.dev.vars`, then open [localhost:3000](http://localhost:3000). Run `npm run db:seed` to load sample data.
+Testes do marketing: `node --test tests/marketing-*.test.mjs`
 
-- `npm run build`: build the Worker
-- `npm run deploy`: build and deploy
-- `npm run lint`: lint and type check
+## Documentação do app
 
-A schema change needs a migration for each database type. See [Databases](docs/databases.md#migrations).
+- [Publicação e configuração](docs/deployment.md)
+- [Segurança](docs/security.md)
+- [Bancos de dados](docs/databases.md)
+- [Provedores de envio e recebimento](docs/providers.md)
+- [API e integrações](docs/api.md)
+- [Assistente de e-mail e MCP](docs/email-assistant-and-mcp.md)
+- [Importar do Google Takeout](docs/import.md)
+- [Solução de problemas](docs/troubleshooting.md)
 
-## Documentation
+## Créditos e licença
 
-- [Deployment and configuration](docs/deployment.md)
-- [Databases](docs/databases.md)
-- [Sending and receiving providers](docs/providers.md)
-- [API and integrations](docs/api.md)
-- [Email assistant and MCP](docs/email-assistant-and-mcp.md)
-- [Importing from Google Takeout](docs/import.md)
-- [Adding a language](docs/localization.md)
-- [Troubleshooting](docs/troubleshooting.md)
-
-## License
-
-See [LICENSE](LICENSE).
+Baseado no [MailFlare](https://github.com/hieunc229/mailflare), de `hieunc229`. Distribuído sob a [GNU AGPL-3.0](LICENSE): quem usa uma versão modificada pela rede tem direito ao código-fonte dela.
