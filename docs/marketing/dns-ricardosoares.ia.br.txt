@@ -1,0 +1,19 @@
+; Amazon SES (us-east-1): registros de ricardosoares.ia.br e news.ricardosoares.ia.br
+; Importar em Cloudflare > ricardosoares.ia.br > DNS > Records > Import and Export,
+; com a opcao de proxy DESMARCADA.
+
+; Marketing: send@news.ricardosoares.ia.br
+dn35c3l6uojejvgsvmhmexlcfxyklcgx._domainkey.news.ricardosoares.ia.br.	1	IN	CNAME	dn35c3l6uojejvgsvmhmexlcfxyklcgx.dkim.amazonses.com.
+6nie5sc5w6ccnctck6evffodptmycfs7._domainkey.news.ricardosoares.ia.br.	1	IN	CNAME	6nie5sc5w6ccnctck6evffodptmycfs7.dkim.amazonses.com.
+em5bcbl5wv4aseua3lz2h5quehbfn656._domainkey.news.ricardosoares.ia.br.	1	IN	CNAME	em5bcbl5wv4aseua3lz2h5quehbfn656.dkim.amazonses.com.
+bounce.news.ricardosoares.ia.br.	1	IN	MX	10 feedback-smtp.us-east-1.amazonses.com.
+bounce.news.ricardosoares.ia.br.	1	IN	TXT	"v=spf1 include:amazonses.com ~all"
+_dmarc.news.ricardosoares.ia.br.	1	IN	TXT	"v=DMARC1; p=quarantine; adkim=s; aspf=r;"
+
+; Dominio principal: suporte@ricardosoares.ia.br
+feafaobnh6nuoudezf5edn7s6nc63f7f._domainkey.ricardosoares.ia.br.	1	IN	CNAME	feafaobnh6nuoudezf5edn7s6nc63f7f.dkim.amazonses.com.
+czszgrryvkdehgs3gtaediz4vakqln7s._domainkey.ricardosoares.ia.br.	1	IN	CNAME	czszgrryvkdehgs3gtaediz4vakqln7s.dkim.amazonses.com.
+3f6rx7ssz4fycvy2mgos7ck2ronjgiml._domainkey.ricardosoares.ia.br.	1	IN	CNAME	3f6rx7ssz4fycvy2mgos7ck2ronjgiml.dkim.amazonses.com.
+bounce.ricardosoares.ia.br.	1	IN	MX	10 feedback-smtp.us-east-1.amazonses.com.
+bounce.ricardosoares.ia.br.	1	IN	TXT	"v=spf1 include:amazonses.com ~all"
+_dmarc.ricardosoares.ia.br.	1	IN	TXT	"v=DMARC1; p=none;"
