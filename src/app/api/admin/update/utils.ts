@@ -19,6 +19,7 @@ import packageMetadata from "../../../../../package.json";
 const GITHUB_API_URL = "https://api.github.com";
 const GITHUB_API_VERSION = "2026-03-10";
 const UPDATE_WORKFLOW = "deploy-update.yml";
+const UPDATES_FROM_UPSTREAM_OFF: boolean = true;
 const UPDATE_SOURCE_REPOSITORY = "hieunc229/mailflare";
 
 export async function authorizeAdminRequest(request: Request) {
@@ -250,6 +251,9 @@ export async function getUpdateStatus(
 }
 
 export async function dispatchUpdateWorkflow() {
+  // MailLead: the workflow replaces the whole tree with upstream MailFlare, which would delete Marketing.
+  // Upstream changes are merged by hand (see README).
+  if (UPDATES_FROM_UPSTREAM_OFF) throw new Error("Atualização pelo MailFlare original está desligada no MailLead.");
   const env = getEnv();
 
   const config = getDispatchConfig(env);

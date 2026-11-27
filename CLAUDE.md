@@ -201,6 +201,8 @@ Pro/Team keys are validated against Paymug (`src/lib/licenses/`); only a one-way
 
 ### Self-update
 
+**Off in MailLead** (`UPDATES_FROM_UPSTREAM_OFF` in `src/app/api/admin/update/utils.ts`, the workflow disabled on GitHub, and the admin card keeps only database migrations): the workflow replaces the whole tree with upstream and would delete Marketing. Merge upstream by hand. The upstream behaviour was:
+
 The admin overview dispatches `deploy-update.yml` (constant in `src/app/api/admin/update/utils.ts`) in the installation repo, which merges the upstream default branch and pushes it. It does not migrate, build, or deploy; the connected Cloudflare Git integration deploys the push. The admin update card separately reports and applies pending D1 migrations through the Worker binding.
 
 ## Conventions

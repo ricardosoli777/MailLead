@@ -80,7 +80,7 @@ Permissões do `CF_TOKEN` e outras opções: [guia de publicação](docs/deploym
 
 ## Atualizações
 
-> **Não use o botão de atualizar do Admin nem o workflow `Dashboard Update`.** Eles trocam todo o código pelo do MailFlare original e removem o Marketing.
+> A atualização automática pelo MailFlare original está **desligada**: ela trocava todo o código e removia o Marketing. Não reative o workflow `Dashboard Update` nem use *Discard commits* no *Sync fork*.
 
 Para trazer correções do projeto de origem, faça o merge à mão e revise os conflitos:
 
