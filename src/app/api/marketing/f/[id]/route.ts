@@ -35,7 +35,8 @@ export async function POST(request: Request, context: Context) {
 	if (body === null) return new Response("Payload too large", { status: 413 });
 	const data = new URLSearchParams(body);
 	const fields = Object.fromEntries(form.fields.map((field) => [field.key, data.get(`campo.${field.key}`) ?? ""]));
-	const input = { email: data.get("email") ?? "", name: data.get("name") ?? "", fields };
+	const phone = data.get("whatsapp_phone") ?? "";
+	const input = { email: data.get("email") ?? "", name: data.get("name") ?? "", fields, phone, whatsapp: data.get("whatsapp_ok") ? phone : undefined };
 	// Only a program fills the hidden field. It gets the usual answer and nothing happens.
 	if (data.get("website")) return form.doubleOptIn ? checkInboxPage() : subscribedPage();
 	// A snippet on another site carries no token: the person finishes here, where the widget is.

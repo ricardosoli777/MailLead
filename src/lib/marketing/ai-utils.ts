@@ -1,6 +1,6 @@
 /** What the model may propose, rebuilt field by field: its answer is untrusted text. */
 import type { AiAnswer, AiBlock, AiDocument, AiFile, AiFunnel, AiProvider, AiStep } from "./ai-types";
-import { MAX_STEPS, fromTree, newStepId, type TreeStep } from "./flows-utils";
+import { MAX_STEPS, fromTree, newStepId, readUnit, type TreeStep } from "./flows-utils";
 import type { FlowGraph } from "./flows-types";
 
 export const AI_PROVIDERS: { id: AiProvider; label: string; keyHint: string }[] = [
@@ -49,7 +49,7 @@ export function readFunnel(input: unknown): AiFunnel | null {
 		}
 		if (raw.type === "wait") {
 			room--;
-			return [{ type: "wait", amount: Math.max(1, Math.min(365, Math.trunc(Number(raw.amount)) || 1)), unit: raw.unit === "hours" ? "hours" : "days" }];
+			return [{ type: "wait", amount: Math.max(1, Math.min(999, Math.trunc(Number(raw.amount)) || 1)), unit: readUnit(raw.unit) }];
 		}
 		if (raw.type === "tag" && tag(raw.tag)) {
 			room--;

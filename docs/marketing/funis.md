@@ -11,7 +11,7 @@
 - A tela usa `@xyflow/react` (MIT) com o selo oculto (`proOptions.hideAttribution`); os autores pedem assinatura Pro para ocultar.
 - **Objetivo** (opcional): quem recebe a etiqueta escolhida sai, e o que estava na fila para essa pessoa não é enviado.
 - Só entra quem chegar depois da primeira ativação. Cada pessoa passa uma vez por funil.
-- Roda no agendamento de 5 minutos, até 100 pessoas por passagem (cerca de 28 mil avanços por dia). Antes dos envios.
+- Roda no agendamento de 1 minuto (`* * * * *`, só marketing), até 100 pessoas por passagem. Antes dos envios. Esperas de até 45 s são feitas dentro da própria passagem; as maiores ficam para a passagem seguinte. Unidades: segundos, minutos, horas e dias.
 
 ## Envio
 Cada passo de e-mail é uma campanha oculta (`kind = 'flow'`). Por isso valem consentimento, descadastro, aquecimento, cota, disjuntor, ritmo por provedor, rastreio e devoluções.

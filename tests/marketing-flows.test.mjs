@@ -312,3 +312,93 @@ test("a funnel saved by the first builder keeps working", async () => {
 	assert.deepEqual(tags(), ["nao-clicou"]);
 	assert.deepEqual(run(), ["done:null"]);
 });
+
+const audio = (id) => ({ id, type: "whatsapp", audioId: "aud1" });
+
+async function whatsAppSetup() {
+	const context = await setup([audio("step0001"), tag("step0002", "ouviu")]);
+	const { db, id } = context;
+	db.sqlite.prepare("INSERT INTO marketing_audio (id, name, content_type, size, created_at) VALUES ('aud1', 'a.ogg', 'audio/ogg', 1, 0)").run();
+	await engine.writeSetting(db, "whatsapp", { url: "https://go.example.com", token: "t" });
+	assert.equal(await flows.activateFlow(db, id, NOW), null);
+	const heard = [];
+	const sender = { connected: async () => true, send: async (phone, audioId) => heard.push([phone, audioId]) };
+	const allow = (address, phone) => db.sqlite.prepare("INSERT INTO marketing_whatsapp (contact_id, phone, source, text, consented_at) SELECT id, ?, 'f', 't', 0 FROM marketing_contacts WHERE email = ?").run(phone, address);
+	const tagged = () => db.sqlite.prepare("SELECT COUNT(*) AS n FROM marketing_contact_tags WHERE tag = 'ouviu'").get().n;
+	return { ...context, join_: context.join, sender, heard, allow, tagged };
+}
+
+test("an audio step reaches only who authorised WhatsApp, once, and the others walk on", async () => {
+	const { db, join_, sender, heard, allow, tagged } = await whatsAppSetup();
+	await join_("ana@gmail.com", NOW);
+	await join_("bia@gmail.com", NOW);
+	allow("ana@gmail.com", "5511999990000");
+	await flows.runFlows(db, NOW + 1, 100, sender);
+	await flows.runFlows(db, NOW + 2, 100, sender);
+	assert.deepEqual(heard, [["5511999990000", "aud1"]]);
+	assert.equal(tagged(), 2);
+});
+
+test("audio waits outside daytime, while disconnected and beyond five in five minutes", async () => {
+	const { db, join_, sender, heard, allow, tagged } = await whatsAppSetup();
+	for (let index = 0; index < 7; index++) {
+		await join_(`p${index}@gmail.com`, NOW);
+		allow(`p${index}@gmail.com`, `551199999000${index}`);
+	}
+	await flows.runFlows(db, NOW + 1, 100, { ...sender, connected: async () => false });
+	await flows.runFlows(db, NOW + 2, 100, null);
+	// 12h UTC is 9h in Brasilia; fourteen hours later it is 23h.
+	await flows.runFlows(db, NOW + 14 * HOUR, 100, sender);
+	assert.equal(heard.length, 0);
+	assert.equal(tagged(), 0);
+	await flows.runFlows(db, NOW + DAY, 100, sender);
+	assert.equal(heard.length, 5);
+	await flows.runFlows(db, NOW + DAY + 60_000, 100, sender);
+	assert.equal(heard.length, 5, "the next minute is still inside the window");
+	await flows.runFlows(db, NOW + DAY + 6 * 60_000, 100, sender);
+	assert.equal(heard.length, 7);
+	assert.equal(tagged(), 7);
+});
+
+test("a stopped number gets nothing, and a refused audio is not tried again", async () => {
+	const { db, join_, sender, allow, tagged } = await whatsAppSetup();
+	await join_("ana@gmail.com", NOW);
+	await join_("bia@gmail.com", NOW);
+	allow("ana@gmail.com", "5511999990000");
+	allow("bia@gmail.com", "5511999990001");
+	await store.stopWhatsApp(db, db.sqlite.prepare("SELECT id FROM marketing_contacts WHERE email = 'ana@gmail.com'").get().id);
+	let attempts = 0;
+	const failing = { ...sender, send: async () => { attempts++; throw new Error("recusado"); } };
+	const log = console.error;
+	console.error = () => {};
+	await flows.runFlows(db, NOW + 1, 100, failing);
+	await flows.runFlows(db, NOW + 2, 100, failing);
+	console.error = log;
+	assert.equal(attempts, 1);
+	assert.equal(tagged(), 2);
+});
+
+test("a funnel with audio needs the connection and the recording", async () => {
+	const { db, id } = await setup([audio("step0001")]);
+	assert.match(await flows.activateFlow(db, id, NOW), /WhatsApp/);
+	await engine.writeSetting(db, "whatsapp", { url: "https://go.example.com", token: "t" });
+	assert.match(await flows.activateFlow(db, id, NOW), /áudio/);
+});
+
+test("short waits happen inside the pass; long ones are left for later", async () => {
+	const short = (id, amount) => ({ id, type: "wait", amount, unit: "seconds" });
+	const { db, id, join: enter, run, tags } = await setup([short("wait1", 20), tag("tag01", "um"), short("wait2", 20), tag("tag02", "dois"), { id: "wait3", type: "wait", amount: 2, unit: "minutes" }, tag("tag03", "tres")]);
+	await flows.activateFlow(db, id, NOW);
+	await enter("ana@gmail.com", NOW);
+	const slept = [];
+	const sleep = async (ms) => slept.push(ms);
+	await flows.runFlows(db, NOW, 100, null, sleep);
+	assert.deepEqual(slept, [20_000, 20_000]);
+	assert.deepEqual(tags(), ["dois", "um"]);
+	assert.deepEqual(run(), ["active:wait3"]);
+	await flows.runFlows(db, NOW + 60_000, 100, null, sleep);
+	assert.deepEqual(run(), ["active:wait3"]);
+	await flows.runFlows(db, NOW + 40_000 + 120_000, 100, null, sleep);
+	assert.deepEqual(run(), ["done:null"]);
+	assert.equal(slept.length, 2);
+});

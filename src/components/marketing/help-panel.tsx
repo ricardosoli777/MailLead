@@ -63,13 +63,28 @@ const TOPICS: Topic[] = [
 		steps: [
 			"Em Campanhas, escolha nome, modelo, assunto e lista. Se quiser, filtre por etiqueta ou agende.",
 			"Clique em Revisar e leia os avisos.",
-			"Confirme. O envio começa em até 5 minutos.",
+			"Confirme. O envio começa em cerca de 1 minuto.",
 			"Acompanhe entregues, devoluções, cliques e descadastros no relatório.",
 		],
 		tips: [
 			"Comece com uma lista pequena e engajada.",
 			"Aberturas são aproximadas; confie mais nos cliques.",
 			"Por padrão, quem não abre há 180 dias fica de fora e cada pessoa recebe no máximo 3 campanhas por semana.",
+		],
+	},
+	{
+		title: "Áudio por WhatsApp no funil",
+		steps: [
+			"Em WhatsApp, salve o endereço e o token da instância e envie um teste.",
+			"Em Captura, ligue \"Pedir WhatsApp\" no formulário e salve. Se já colou o código no site, copie de novo.",
+			"Em Funis, adicione o bloco \"Áudio no WhatsApp\" e grave ou envie o áudio dentro dele.",
+			"Salve e ative o funil. Para testar, cadastre-se no próprio formulário com o seu número.",
+		],
+		tips: [
+			"Só recebe quem marcou a autorização no formulário. Os outros seguem o funil sem o áudio.",
+			"Os envios saem devagar: no máximo 5 a cada 5 minutos e 100 por dia, das 8h às 20h.",
+			"Se a pessoa pedir para parar, abra o contato em Contatos e clique em Parar WhatsApp. A resposta \"SAIR\" ainda não é lida automaticamente.",
+			"Quem se descadastra do e-mail sai do funil e também deixa de receber os áudios.",
 		],
 	},
 	{
@@ -98,7 +113,7 @@ const TOPICS: Topic[] = [
 		title: "Proteção de reputação (por que o envio pode esperar)",
 		tips: [
 			"Aquecimento: 50 por dia nos primeiros 3 dias, depois 150, 500, 1.000, 2.000 e crescendo aos poucos.",
-			"O envio sai em lotes a cada 5 minutos, com limite por provedor (Gmail, Outlook, Yahoo).",
+			"O envio sai em pequenos lotes a cada minuto, com limite por provedor (Gmail, Outlook, Yahoo).",
 			"Pausa automática: se devoluções chegarem a 2% ou reclamações a 0,08% (com pelo menos 50 envios), tudo para e você é avisado.",
 			"Todo e-mail de marketing leva o link de descadastro, que vale na hora.",
 		],

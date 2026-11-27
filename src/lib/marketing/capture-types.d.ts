@@ -1,6 +1,6 @@
 export type FormField = { key: string; label: string; required: boolean };
 
-export type CaptureForm = { id: string; name: string; listId: string; tags: string[]; consentText: string; doubleOptIn: boolean; fields: FormField[]; button: string };
+export type CaptureForm = { id: string; name: string; listId: string; tags: string[]; consentText: string; doubleOptIn: boolean; fields: FormField[]; button: string; whatsappText: string };
 
 export type CaptureHook = { id: string; name: string; listId: string; tags: string[]; consentText: string; secret: string };
 

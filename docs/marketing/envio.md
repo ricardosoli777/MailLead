@@ -1,7 +1,7 @@
 # Envio de marketing
 
 ## Como funciona
-- A cada 5 minutos o agendamento do Worker envia um lote de até 50 mensagens (cerca de 14 mil por dia no máximo). Não usa as filas do e-mail normal.
+- A cada minuto o agendamento do Worker envia um lote de até 10 mensagens (cerca de 14 mil por dia no máximo). Não usa as filas do e-mail normal.
 - Cada mensagem é reservada no banco antes de sair. Falha de resultado incerto fica como `unknown` e **não** é reenviada.
 - Antes de cada envio: consentimento, descadastro e bloqueio. Antes de cada lote: disjuntor, verificações do domínio, aquecimento, cota do SES e ritmo por provedor.
 - Disjuntor: com pelo menos 50 envios em 7 dias, pausa se devolução permanente ≥ 2% ou reclamação ≥ 0,08%, e avisa por e-mail quem salvou o remetente. Só volta quando alguém clica em retomar.

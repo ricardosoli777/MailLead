@@ -1,6 +1,9 @@
+export type WaitUnit = "seconds" | "minutes" | "hours" | "days";
+
 export type FlowStep =
 	| { id: string; type: "email"; name: string; templateId: string; subject: string }
-	| { id: string; type: "wait"; amount: number; unit: "hours" | "days" }
+	| { id: string; type: "whatsapp"; name: string; audioId: string }
+	| { id: string; type: "wait"; amount: number; unit: WaitUnit }
 	| { id: string; type: "condition"; test: "opened" | "clicked" | "tag"; tag: string }
 	| { id: string; type: "tag"; action: "add" | "remove"; tag: string }
 	| { id: string; type: "exit" };

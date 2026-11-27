@@ -207,7 +207,7 @@ test("a webhook accepts only a body signed with its secret (I3)", async () => {
 test("extra fields are chosen per form, required ones enforced and the answers kept on the contact", async () => {
 	const { db, list, mails, status } = await setup();
 	const extras = capture.readFormExtras({ fields: [{ label: " Telefone ", required: true }, { label: "Cidade" }, { label: "E-mail" }, { label: "telefone" }, { label: "" }], button: " Baixar " });
-	assert.deepEqual(extras, { fields: [{ key: "telefone", label: "Telefone", required: true }, { key: "cidade", label: "Cidade", required: false }], button: "Baixar" });
+	assert.deepEqual(extras, { fields: [{ key: "telefone", label: "Telefone", required: true }, { key: "cidade", label: "Cidade", required: false }], button: "Baixar", whatsappText: "" });
 	const id = await capture.createForm(db, { name: "Vendas", listId: list.id, tags: [], consentText: "Aceito", ...extras }, NOW);
 	const form = await capture.getForm(db, id);
 	const send = { sendConfirmation: async (to, _name, token) => mails.push({ to, token }) };
@@ -236,4 +236,31 @@ test("public pages escape what they show", async () => {
 	assert.ok((await pages.formPage(form, { siteKey: "chave" }).text()).includes("cf-turnstile"));
 	const message = pages.confirmationMessage("KLEAD", "<x>", "https://a.example/k/t");
 	assert.ok(!message.html.includes("<x>") && message.html.includes("https://a.example/k/t") && message.text.includes("https://a.example/k/t"));
+});
+
+test("WhatsApp needs its own tick, waits for the e-mail confirmation and can be stopped", async () => {
+	const { db, list } = await setup();
+	const id = await capture.createForm(db, { name: "Zap", listId: list.id, tags: [], consentText: "Aceito", doubleOptIn: true, ...capture.readFormExtras({ whatsapp: true }) }, NOW);
+	const form = await capture.getForm(db, id);
+	assert.ok(pages.formPage(form));
+	assert.match(await pages.formPage(form).text(), /type="checkbox" name="whatsapp_ok" value="1" style="[^"]+">/, "the box starts unticked");
+	const mails = [];
+	const send = (email, whatsapp, now = NOW) => capture.submitForm(db, form, { email, name: "Ana", whatsapp }, { sendConfirmation: async (_to, _name, token) => mails.push(token) }, now);
+	const phones = () => db.sqlite.prepare("SELECT phone FROM marketing_whatsapp WHERE opted_out_at IS NULL").all().map((row) => row.phone);
+
+	assert.equal((await send("ana@gmail.com", "123")).ok, false);
+	await send("ana@gmail.com", "(11) 99999-0000");
+	assert.deepEqual(phones(), [], "nothing before the confirmation");
+	await capture.confirmSubscription(db, mails[0], NOW);
+	assert.deepEqual(phones(), ["5511999990000"]);
+
+	await send("bia@gmail.com", undefined);
+	await capture.confirmSubscription(db, mails[1], NOW);
+	assert.equal(phones().length, 1, "without the tick there is no permission");
+
+	const ana = db.sqlite.prepare("SELECT id FROM marketing_contacts WHERE email = 'ana@gmail.com'").get().id;
+	assert.equal(await store.stopWhatsApp(db, ana, NOW), true);
+	assert.deepEqual(phones(), []);
+	await store.eraseContact(db, ana, NOW);
+	assert.equal(db.sqlite.prepare("SELECT COUNT(*) AS n FROM marketing_whatsapp").get().n, 0);
 });

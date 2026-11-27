@@ -128,6 +128,11 @@ export function ContactManager() {
 		return "Contato atualizado.";
 	});
 
+	const stopWhatsApp = (id: string) => run(async () => {
+		setDetail((await marketingRequest<{ contact: ContactDetail }>(`/api/marketing/contacts/${id}`, json("PATCH", { action: "stop_whatsapp" }))).contact);
+		return "WhatsApp desativado para este contato.";
+	});
+
 	const erase = (contact: ContactSummary) => {
 		if (!window.confirm(`Apagar todos os dados de ${contact.email}? Não dá para desfazer. O endereço fica bloqueado para novos envios.`)) return;
 		void run(async () => {
@@ -245,6 +250,12 @@ export function ContactManager() {
 										))}
 									</fieldset>
 									{Object.entries(detail.fields).map(([key, value]) => <p key={key} className="text-xs text-neutral-600">{key}: {value}</p>)}
+									{detail.whatsapp && (
+										<div className="flex flex-wrap items-center gap-2 text-xs text-neutral-600">
+											<span>WhatsApp: {detail.whatsapp.phone} · {detail.whatsapp.optedOutAt ? `parado em ${day(detail.whatsapp.optedOutAt)}` : `autorizado em ${day(detail.whatsapp.consentedAt)}: "${detail.whatsapp.text}"`}</span>
+											{!detail.whatsapp.optedOutAt && <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void stopWhatsApp(detail.id)}>Parar WhatsApp</Button>}
+										</div>
+									)}
 									<div className="text-xs text-neutral-600">
 										<p className="font-medium">Consentimento</p>
 										{detail.consents.length === 0 && <p>Nenhum registrado.</p>}

@@ -14,6 +14,7 @@ export type ContactDetail = ContactSummary & {
 	fields: Record<string, string>;
 	consents: { source: string; text: string; consentedAt: number; recordedAt: number }[];
 	events: { type: string; detail: string; createdAt: number }[];
+	whatsapp: { phone: string; source: string; text: string; consentedAt: number; optedOutAt: number | null } | null;
 };
 
 export type MailingList = { id: string; name: string; members: number };

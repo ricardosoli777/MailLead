@@ -53,7 +53,7 @@ Quando já houver informação suficiente (o que é oferecido, para quem e o obj
 Passos, na ordem em que acontecem:
 {"type": "email", "name": "nome interno", "subject": "assunto", "preheader": "frase de prévia", "blocks": [{"type": "heading", "text": "..."}, {"type": "text", "text": "..."}, {"type": "button", "label": "...", "url": "https://..."}]}
 Um bloco de imagem é {"type": "image", "url": "...", "alt": "descrição"}.
-{"type": "wait", "amount": 2, "unit": "days"}  (unit: "hours" ou "days")
+{"type": "wait", "amount": 2, "unit": "days"}  (unit: "seconds", "minutes", "hours" ou "days")
 {"type": "condition", "test": "clicked", "tag": "", "yes": [...], "no": [...]}  (test: "opened", "clicked" ou "tag"; abertura e clique só depois de um e-mail)
 {"type": "tag", "action": "add", "tag": "interessado"}
 

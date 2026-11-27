@@ -5,12 +5,31 @@
 import { newId } from "@/lib/ids";
 import { PROVIDER_SQL } from "./campaigns";
 import type { Flow, FlowDraft, FlowStatus } from "./flows-types";
-import { emptyGraph, firstStep, graphErrors, parseGraph, readGraph, successors, type Node } from "./flows-utils";
+import { emptyGraph, firstStep, graphErrors, parseGraph, readGraph, successors, WAIT_UNITS, type Node } from "./flows-utils";
 import { parseDesign } from "./render";
 
 const RUNS_PER_TICK = 100;
 const MAX_MOVES_PER_RUN = 20;
 const HOUR = 60 * 60 * 1000;
+// Waits this short happen inside the pass; longer ones are picked up by a later one.
+const INLINE_WAIT_MS = 45_000;
+type Sleeper = { sleep: ((ms: number) => Promise<unknown>) | null; left: number };
+
+// A number that sends in bursts gets blocked by WhatsApp, so audio leaves slowly and in daytime.
+export const WHATSAPP_PER_5_MINUTES = 5;
+export const WHATSAPP_PER_DAY = 100;
+const STALE_CLAIM_MS = 15 * 60 * 1000;
+
+/** What the funnel needs to send audio. Without it, people wait at the audio step. */
+export type WhatsAppSender = { connected: () => Promise<boolean>; send: (phone: string, audioId: string) => Promise<void> };
+
+/** 8h to 20h in Brasília (UTC-3, no daylight saving). */
+const daytime = (now: number) => {
+	const hour = new Date(now - 3 * HOUR).getUTCHours();
+	return hour >= 8 && hour < 20;
+};
+
+type Audio = { sender: WhatsAppSender | null; left: number; connected?: boolean };
 
 const campaignId = (flowId: string, stepId: string) => `flow:${flowId}:${stepId}`;
 const prefixed = "substr(id, 1, length(?1)) = ?1";
@@ -79,6 +98,11 @@ export async function activateFlow(db: D1Database, id: string, now = Date.now())
 		if ("error" in parsed) return `${template.name}: ${parsed.error}`;
 		mails.push({ id: campaignId(id, step.id), subject, design: JSON.stringify(parsed.design) });
 	}
+	const audios = graph.nodes.flatMap((step) => (step.type === "whatsapp" ? [step.audioId] : []));
+	if (audios.length && !(await db.prepare("SELECT 1 AS ok FROM marketing_settings WHERE key = 'whatsapp'").first())) return "Conecte o WhatsApp em Configurações > WhatsApp antes de ativar.";
+	for (const audioId of audios) {
+		if (!(await db.prepare("SELECT 1 AS ok FROM marketing_audio WHERE id = ?").bind(audioId).first())) return "Um áudio usado no funil não foi encontrado. Grave de novo.";
+	}
 	for (const mail of mails) {
 		await db.prepare(`INSERT INTO marketing_campaigns (id, name, list_id, subject, design, status, created_at, kind) VALUES (?, ?, ?, ?, ?, 'running', ?, 'flow')
 			ON CONFLICT (id) DO UPDATE SET name = excluded.name, list_id = excluded.list_id, subject = excluded.subject, design = excluded.design, status = 'running'`)
@@ -142,8 +166,37 @@ async function reachGoals(db: D1Database): Promise<void> {
 
 type Run = { flow_id: string; contact_id: string; step_id: string | null; wake_at: number | null; last_send_id: string | null };
 
+/** True when the person may move on; false keeps them at this step for a later pass. */
+async function sendAudio(db: D1Database, run: Run, step: { id: string; audioId: string }, audio: Audio, now: number): Promise<boolean> {
+	const key = [run.flow_id, step.id, run.contact_id] as const;
+	const done = await db.prepare("SELECT status, claimed_at FROM marketing_whatsapp_sends WHERE flow_id = ? AND step_id = ? AND contact_id = ?").bind(...key).first<{ status: string; claimed_at: number }>();
+	// A send cut in the middle may have left, so it is never repeated.
+	if (done) return done.status !== "sending" || now - done.claimed_at > STALE_CLAIM_MS;
+	const claim = (status: string, error = "") => db.prepare("INSERT OR IGNORE INTO marketing_whatsapp_sends (flow_id, step_id, contact_id, status, error, claimed_at) VALUES (?, ?, ?, ?, ?, ?)").bind(...key, status, error, now).run();
+	const who = await db.prepare("SELECT phone FROM marketing_whatsapp WHERE contact_id = ? AND opted_out_at IS NULL").bind(run.contact_id).first<{ phone: string }>();
+	// Only whoever authorised WhatsApp receives; the others follow the funnel without it.
+	if (!who) {
+		await claim("skipped", "sem autorização de WhatsApp");
+		return true;
+	}
+	if (!audio.sender || audio.left <= 0 || !daytime(now)) return false;
+	audio.connected ??= await audio.sender.connected().catch(() => false);
+	if (!audio.connected) return false;
+	if (!(await claim("sending")).meta.changes) return false;
+	audio.left--;
+	const finish = (status: string, error: string, sentAt: number | null) => db.prepare("UPDATE marketing_whatsapp_sends SET status = ?, error = ?, sent_at = ? WHERE flow_id = ? AND step_id = ? AND contact_id = ?").bind(status, error, sentAt, ...key).run();
+	try {
+		await audio.sender.send(who.phone, step.audioId);
+		await finish("sent", "", now);
+	} catch (error) {
+		console.error("WhatsApp funnel audio failed", error);
+		await finish("failed", String((error as Error).message).slice(0, 300), null);
+	}
+	return true;
+}
+
 /** Walks one person forward until a step has to wait. */
-async function advance(db: D1Database, run: Run, nodes: Map<string, Node>, now: number): Promise<void> {
+async function advance(db: D1Database, run: Run, nodes: Map<string, Node>, audio: Audio, sleeper: Sleeper, now: number): Promise<void> {
 	let { step_id: stepId, wake_at: wakeAt, last_send_id: lastSend } = run;
 	let nextCheck = now;
 	for (let moves = 0; moves < MAX_MOVES_PER_RUN && stepId; moves++) {
@@ -163,9 +216,18 @@ async function advance(db: D1Database, run: Run, nodes: Map<string, Node>, now: 
 			if (send.status === "pending" || send.status === "sending") break;
 			lastSend = send.id;
 			stepId = node.next;
+		} else if (step.type === "whatsapp") {
+			if (!(await sendAudio(db, run, step, audio, now))) break;
+			stepId = node.next;
 		} else if (step.type === "wait") {
-			if (wakeAt === null) wakeAt = now + step.amount * (step.unit === "hours" ? HOUR : 24 * HOUR);
-			if (now < wakeAt) { nextCheck = wakeAt; break; }
+			if (wakeAt === null) wakeAt = now + step.amount * WAIT_UNITS[step.unit].ms;
+			if (now < wakeAt) {
+				const gap = wakeAt - now;
+				if (!sleeper.sleep || gap > sleeper.left) { nextCheck = wakeAt; break; }
+				sleeper.left -= gap;
+				await sleeper.sleep(gap);
+				now = nextCheck = wakeAt;
+			}
 			wakeAt = null;
 			stepId = node.next;
 		} else if (step.type === "condition") {
@@ -185,8 +247,8 @@ async function advance(db: D1Database, run: Run, nodes: Map<string, Node>, now: 
 		.bind(stepId, stepId ? "active" : "done", wakeAt, lastSend, nextCheck, run.flow_id, run.contact_id).run();
 }
 
-/** One pass of the five-minute cron, before the sending engine. */
-export async function runFlows(db: D1Database, now = Date.now(), limit = RUNS_PER_TICK): Promise<void> {
+/** One pass of the every-minute cron, before the sending engine. */
+export async function runFlows(db: D1Database, now = Date.now(), limit = RUNS_PER_TICK, sender: WhatsAppSender | null = null, sleep: Sleeper["sleep"] = null): Promise<void> {
 	await exitIneligible(db);
 	const { results: flows } = await db.prepare("SELECT * FROM marketing_flows WHERE status = 'active'").all<Row>();
 	if (!flows.length) return;
@@ -195,16 +257,21 @@ export async function runFlows(db: D1Database, now = Date.now(), limit = RUNS_PE
 	const trees = new Map(flows.map((flow) => [flow.id, successors(readGraph(flow.steps))]));
 	const { results: runs } = await db.prepare(`SELECT r.flow_id, r.contact_id, r.step_id, r.wake_at, r.last_send_id FROM marketing_flow_runs r JOIN marketing_flows f ON f.id = r.flow_id
 		WHERE r.status = 'active' AND f.status = 'active' AND r.next_check_at <= ? ORDER BY r.next_check_at, r.created_at LIMIT ?`).bind(now, limit).all<Run>();
-	for (const run of runs) await advance(db, run, trees.get(run.flow_id)!, now);
+	const recent = await db.prepare("SELECT COUNT(*) AS day, COALESCE(SUM(claimed_at > ?1), 0) AS burst FROM marketing_whatsapp_sends WHERE claimed_at > ?2 AND status <> 'skipped'")
+		.bind(now - 5 * 60 * 1000, now - 24 * HOUR).first<{ day: number; burst: number }>();
+	const audio: Audio = { sender, left: Math.min(WHATSAPP_PER_5_MINUTES - recent!.burst, WHATSAPP_PER_DAY - recent!.day) };
+	const sleeper: Sleeper = { sleep, left: INLINE_WAIT_MS };
+	for (const run of runs) await advance(db, run, trees.get(run.flow_id)!, audio, sleeper, now);
 }
 
 export async function listFlows(db: D1Database): Promise<Flow[]> {
-	const [flows, runs, here, mails] = await Promise.all([
+	const [flows, runs, here, mails, audios] = await Promise.all([
 		db.prepare("SELECT * FROM marketing_flows ORDER BY created_at DESC LIMIT 50").all<Row>(),
 		db.prepare("SELECT flow_id, status, COUNT(*) AS n FROM marketing_flow_runs GROUP BY flow_id, status").all<{ flow_id: string; status: "active" | "done" | "goal" | "exited"; n: number }>(),
 		db.prepare("SELECT flow_id, step_id, COUNT(*) AS n FROM marketing_flow_runs WHERE status = 'active' GROUP BY flow_id, step_id").all<{ flow_id: string; step_id: string; n: number }>(),
 		db.prepare(`SELECT s.campaign_id, COUNT(s.sent_at) AS sent, COUNT(s.opened_at) AS opened, COUNT(s.clicked_at) AS clicked
 			FROM marketing_sends s JOIN marketing_campaigns p ON p.id = s.campaign_id WHERE p.kind = 'flow' GROUP BY s.campaign_id`).all<{ campaign_id: string; sent: number; opened: number; clicked: number }>(),
+		db.prepare("SELECT flow_id, step_id, COUNT(*) AS sent FROM marketing_whatsapp_sends WHERE status = 'sent' GROUP BY flow_id, step_id").all<{ flow_id: string; step_id: string; sent: number }>(),
 	]);
 	return flows.results.map((row) => {
 		const graph = readGraph(row.steps);
@@ -215,7 +282,7 @@ export async function listFlows(db: D1Database): Promise<Flow[]> {
 			const mail = mails.results.find((item) => item.campaign_id === campaignId(row.id, step.id));
 			stats[step.id] = {
 				here: here.results.find((item) => item.flow_id === row.id && item.step_id === step.id)?.n ?? 0,
-				sent: mail?.sent ?? 0,
+				sent: mail?.sent ?? audios.results.find((item) => item.flow_id === row.id && item.step_id === step.id)?.sent ?? 0,
 				opened: mail?.opened ?? 0,
 				clicked: mail?.clicked ?? 0,
 			};

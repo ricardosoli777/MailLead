@@ -184,10 +184,14 @@ export default {
 
 	async scheduled(controller: ScheduledController, rawEnv: CloudflareEnv, ctx: ExecutionContext) {
 		const env = withDatabase(withStorage(rawEnv));
+		// Marketing has its own every-minute tick; nothing else runs on it.
+		if (controller.cron === "* * * * *") {
+			ctx.waitUntil(runMarketingSending(env).catch((error) => console.error("Marketing sending failed", error)));
+			return;
+		}
 		if (controller.cron === "0 2 * * *") ctx.waitUntil(runScheduledDatabaseBackup(env, new Date(controller.scheduledTime)));
 		ctx.waitUntil(runAgentMaintenance(env));
 		ctx.waitUntil(runAutoUpdate(env));
-		if (controller.cron !== "0 2 * * *") ctx.waitUntil(runMarketingSending(env).catch((error) => console.error("Marketing sending failed", error)));
 		if (controller.cron === "0 2 * * *" && env.MARKETING_DB) ctx.waitUntil(saveMarketingBackup(env.MARKETING_DB, env.BUCKET).catch((error) => console.error("Marketing backup failed", error)));
 		ctx.waitUntil(runTrashRetention(env, new Date(controller.scheduledTime)));
 		ctx.waitUntil(runFollowUpReminders(env, new Date(controller.scheduledTime)));

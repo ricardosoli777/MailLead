@@ -6,6 +6,7 @@ import { Mic, Paperclip, Square, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import type { AiAnswer, AiDocument, AiFile, AiFunnel, AiMessage, AiStep } from "@/lib/marketing/ai-types";
 import { AI_PROVIDERS, documentsProblem } from "@/lib/marketing/ai-utils";
+import { waitText } from "@/lib/marketing/flows-utils";
 import { readAiSettings, type AiSettings } from "./ai-store";
 import { marketingRequest } from "./marketing-request";
 import { ACCEPTED_FILES, readDocument } from "./read-document";
@@ -18,7 +19,7 @@ function Steps({ steps }: { steps: AiStep[] }) {
 		<ol className="space-y-2">
 			{steps.map((step, index) => (
 				<li key={index} className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm">
-					{step.type === "wait" ? `Esperar ${step.amount} ${step.unit === "days" ? "dia(s)" : "hora(s)"}`
+					{step.type === "wait" ? `Esperar ${waitText(step.amount, step.unit)}`
 						: step.type === "tag" ? `${step.action === "add" ? "Colocar" : "Tirar"} a etiqueta "${step.tag}"`
 							: step.type === "email" ? (
 								<details>

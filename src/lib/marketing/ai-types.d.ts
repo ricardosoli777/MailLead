@@ -12,7 +12,7 @@ export type AiDocument = { name: string; kind: "pdf"; data: string } | { name: s
 
 export type AiStep =
 	| { type: "email"; name: string; subject: string; preheader: string; blocks: AiBlock[] }
-	| { type: "wait"; amount: number; unit: "hours" | "days" }
+	| { type: "wait"; amount: number; unit: "seconds" | "minutes" | "hours" | "days" }
 	| { type: "condition"; test: "opened" | "clicked" | "tag"; tag: string; yes: AiStep[]; no: AiStep[] }
 	| { type: "tag"; action: "add" | "remove"; tag: string };
 

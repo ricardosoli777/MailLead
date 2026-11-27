@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { FlowDraft, FlowNode, StepStats, StepType } from "@/lib/marketing/flows-types";
-import { STEP_LABELS } from "@/lib/marketing/flows-utils";
+import { MAX_WAIT, STEP_LABELS, WAIT_UNITS } from "@/lib/marketing/flows-utils";
 import { renderHtml } from "@/lib/marketing/render";
 import { STARTERS } from "@/lib/marketing/starters";
 import type { Template } from "@/lib/marketing/types";
+import { AudioRecorder } from "./audio-recorder";
 import { STEP_STYLE } from "./flow-nodes";
+import { marketingRequest } from "./marketing-request";
 
 const SELECT = "h-10 w-full rounded-md border border-neutral-200 bg-white px-3 text-sm disabled:opacity-60";
 export type Option = { id: string; name: string };
@@ -27,7 +29,8 @@ function Field({ label, help, children }: { label: string; help?: string; childr
 
 const STEP_HELP: Record<StepType, string> = {
 	email: "Envia uma mensagem. O conteúdo pode ser escrito agora ou depois.",
-	wait: "Segura a pessoa por algumas horas ou dias.",
+	whatsapp: "Manda um áudio para quem autorizou o WhatsApp no formulário.",
+	wait: "Segura a pessoa por segundos, minutos, horas ou dias.",
 	condition: "Separa em dois caminhos: Sim e Não.",
 	tag: "Marca a pessoa, ou tira uma marca.",
 	exit: "Encerra o funil neste caminho.",
@@ -155,29 +158,68 @@ function EmailFields({ step, templates, readOnly, onChange, onCreateContent, onE
 	);
 }
 
+/** Records or uploads right in the step; the audio is saved as soon as it is ready. */
+function WhatsAppFields({ step, readOnly, onChange }: StepDialogProps & { step: Extract<FlowNode, { type: "whatsapp" }> }) {
+	const [file, setFile] = useState<File | null>(null);
+	const [state, setState] = useState<{ error: boolean; text: string } | null>(null);
+
+	async function choose(next: File | null) {
+		const discarded = !!file && !next;
+		setFile(next);
+		setState(null);
+		if (discarded) onChange({ audioId: "" });
+		if (!next) return;
+		setState({ error: false, text: "Salvando o áudio…" });
+		try {
+			const body = new FormData();
+			body.set("file", next);
+			const { id } = await marketingRequest<{ id: string }>("/api/marketing/audio", { method: "POST", body });
+			onChange({ audioId: id });
+			setState({ error: false, text: "Áudio salvo neste passo. Salve o funil para guardar." });
+		} catch (error) {
+			setState({ error: true, text: (error as Error).message });
+		}
+	}
+
+	return (
+		<>
+			<Field label="Nome desta etapa" help="Só você vê. Ex.: Boas-vindas em áudio.">
+				<Input value={step.name} disabled={readOnly} maxLength={80} placeholder="Áudio" onChange={(event) => onChange({ name: event.target.value })} />
+			</Field>
+			{step.audioId && !file && <audio controls src={`/api/marketing/audio/${step.audioId}`} className="h-10 w-full" />}
+			{!readOnly && <AudioRecorder value={file} onChange={(next) => void choose(next)} />}
+			{state && <p role="status" className={`text-xs ${state.error ? "text-red-700" : "text-green-700"}`}>{state.text}</p>}
+			<p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">Só recebe quem marcou a autorização de WhatsApp no formulário; os demais seguem o funil sem o áudio. Os envios saem devagar: no máximo 5 a cada 5 minutos e 100 por dia, das 8h às 20h.</p>
+		</>
+	);
+}
+
 export function StepDialog(props: StepDialogProps) {
 	const { step, tags, stats, error, readOnly, onChange, onDuplicate, onDelete, onClose } = props;
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
-			<DialogContent>
+			<DialogContent className="max-h-[calc(100vh-4rem)] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>{STEP_LABELS[step.type]}</DialogTitle>
 					<DialogDescription>{STEP_HELP[step.type]}</DialogDescription>
 				</DialogHeader>
 				<div className="mt-4 space-y-3">
 					{error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
-					{stats && <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">{stats.here} aqui agora{step.type === "email" ? ` · ${stats.sent} enviados · ${stats.opened} abriram · ${stats.clicked} clicaram` : ""}</p>}
+					{stats && <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">{stats.here} aqui agora{step.type === "email" ? ` · ${stats.sent} enviados · ${stats.opened} abriram · ${stats.clicked} clicaram` : step.type === "whatsapp" ? ` · ${stats.sent} enviados` : ""}</p>}
 					{step.type === "email" && <EmailFields {...props} step={step} />}
+					{step.type === "whatsapp" && <WhatsAppFields {...props} step={step} />}
 					{step.type === "wait" && (
+						<>
 						<div className="grid grid-cols-2 gap-3">
-							<Field label="Quanto"><Input type="number" min={1} max={365} disabled={readOnly} value={step.amount || ""} onChange={(event) => onChange({ amount: Math.trunc(Number(event.target.value)) || 0 })} /></Field>
+							<Field label="Quanto"><Input type="number" min={1} max={MAX_WAIT} disabled={readOnly} value={step.amount || ""} onChange={(event) => onChange({ amount: Math.trunc(Number(event.target.value)) || 0 })} /></Field>
 							<Field label="Unidade">
 								<select className={SELECT} disabled={readOnly} value={step.unit} onChange={(event) => onChange({ unit: event.target.value })}>
-									<option value="hours">horas</option>
-									<option value="days">dias</option>
+									{Object.entries(WAIT_UNITS).map(([value, unit]) => <option key={value} value={value}>{unit.many}</option>)}
 								</select>
 							</Field>
 						</div>
+						{(step.unit === "seconds" || step.unit === "minutes") && <p className="text-xs text-neutral-500">Até 45 segundos a espera é contada na hora. Acima disso, o funil confere uma vez por minuto.</p>}
+						</>
 					)}
 					{step.type === "condition" && (
 						<Field label="Separar quem…" help="Abriu e clicou olham o último e-mail enviado neste funil.">

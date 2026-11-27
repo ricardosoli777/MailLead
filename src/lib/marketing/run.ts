@@ -1,21 +1,25 @@
-/** What the five-minute cron runs. */
+/** What the every-minute cron runs. */
 import { getAwsConfig } from "@/lib/aws/config";
 import { sendSesEmail } from "@/lib/aws/ses";
 import { sendSystemEmail } from "@/lib/email/system-mail";
 import { confirmationMessage } from "./capture-page";
 import { checkBreaker, dropSetting, readSetting, runEngine, writeSetting } from "./engine";
-import { runFlows } from "./flows";
+import { runFlows, type WhatsAppSender } from "./flows";
 import type { SenderSettings } from "./sending-types";
 import { formatFrom } from "./sending-utils";
 import { CONFIGURATION_SET, checkSender, getQuota } from "./ses-marketing";
+import { sendWhatsAppAudio, whatsAppStatus, type WhatsAppConfig } from "./whatsapp";
 
 const CHECK_TTL_MS = 60 * 60 * 1000;
+// A pass each minute with a fifth of the batch keeps the same pace as before.
+const BATCH_PER_MINUTE = 10;
+const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export async function runMarketingSending(env: CloudflareEnv): Promise<void> {
 	const db = env.MARKETING_DB;
 	if (!db) return;
 	// Funnels first, so what they queue can leave in this same pass.
-	await runFlows(db).catch((error) => console.error("Marketing funnels failed", error));
+	await runFlows(db, Date.now(), undefined, await whatsAppSender(env, db), pause).catch((error) => console.error("Marketing funnels failed", error));
 	if (!(await db.prepare("SELECT 1 AS ok FROM marketing_sends s JOIN marketing_campaigns p ON p.id = s.campaign_id WHERE s.status = 'pending' AND p.status = 'running' UNION ALL SELECT 1 FROM marketing_campaigns WHERE kind = 'campaign' AND (status = 'running' OR (status = 'scheduled' AND (scheduled_at IS NULL OR scheduled_at <= ?))) LIMIT 1").bind(Date.now()).first())) return;
 	const config = await getAwsConfig(env);
 	if (!config) return;
@@ -27,9 +31,27 @@ export async function runMarketingSending(env: CloudflareEnv): Promise<void> {
 			// Events carry the bare SES id, without the Message-ID wrapping.
 			return { messageId: messageId.slice(1, messageId.indexOf("@")) };
 		},
-	});
+	}, BATCH_PER_MINUTE);
 	if (result.blocked) console.log("Marketing sending blocked", result.blocked);
 	await notifyBreaker(env, db);
+}
+
+/** The funnel's audio, with a few seconds between one person and the next. */
+async function whatsAppSender(env: CloudflareEnv, db: D1Database): Promise<WhatsAppSender | null> {
+	const config = await readSetting<WhatsAppConfig>(db, "whatsapp");
+	if (!config) return null;
+	let sent = 0;
+	return {
+		connected: async () => (await whatsAppStatus(config)).connected,
+		send: async (phone, audioId) => {
+			const object = await env.BUCKET.get(`marketing/audio/${audioId}`);
+			if (!object) throw new Error("Áudio não encontrado.");
+			if (sent++) await pause(3000 + Math.random() * 5000);
+			const type = object.httpMetadata?.contentType ?? "audio/ogg";
+			const name = `audio.${type.includes("webm") ? "webm" : type.includes("mp4") ? "m4a" : type.includes("mpeg") ? "mp3" : type.includes("wav") ? "wav" : "ogg"}`;
+			await sendWhatsAppAudio(config, phone, new File([await object.arrayBuffer()], name, { type }));
+		},
+	};
 }
 
 /** The domain checks, remembered for an hour once everything passes. */

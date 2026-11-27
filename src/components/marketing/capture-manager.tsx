@@ -11,10 +11,10 @@ type List = { id: string; name: string };
 type Kind = "form" | "hook" | "key";
 
 const SELECT = "h-10 w-full rounded-md border border-neutral-200 bg-white px-3 text-sm";
-const EMPTY = { name: "", listId: "", tags: "", consentText: "", doubleOptIn: true, button: "Quero receber", fields: [] as FormField[] };
+const EMPTY = { name: "", listId: "", tags: "", consentText: "", doubleOptIn: true, button: "Quero receber", fields: [] as FormField[], whatsapp: false, whatsappText: "Quero receber mensagens e áudios pelo WhatsApp." };
 const MAX_FIELDS = 8;
-const SUGGESTED = ["Telefone", "WhatsApp", "Cidade", "Empresa"];
-const draftOf = (form: CaptureForm) => ({ name: form.name, listId: form.listId, tags: form.tags.join(", "), consentText: form.consentText, doubleOptIn: form.doubleOptIn, button: form.button, fields: form.fields });
+const SUGGESTED = ["Telefone", "Cidade", "Empresa"];
+const draftOf = (form: CaptureForm) => ({ name: form.name, listId: form.listId, tags: form.tags.join(", "), consentText: form.consentText, doubleOptIn: form.doubleOptIn, button: form.button, fields: form.fields, whatsapp: !!form.whatsappText, whatsappText: form.whatsappText || EMPTY.whatsappText });
 const escapes: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
 const escapeHtml = (value: string) => value.replace(/[&<>"]/g, (char) => escapes[char]);
 
@@ -27,6 +27,10 @@ const snippet = (url: string, form: CaptureForm) => [
 	`  <input name="email" type="email" placeholder="Seu e-mail" required>`,
 	...form.fields.map((field) => `  <input name="campo.${escapeHtml(field.key)}" type="${inputType(field.key)}" placeholder="${escapeHtml(field.label)}"${field.required ? " required" : ""}>`),
 	`  <div style="position:absolute;left:-9999px" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off"></div>`,
+	...(form.whatsappText ? [
+		`  <input name="whatsapp_phone" type="tel" placeholder="Seu WhatsApp com DDD">`,
+		`  <label><input type="checkbox" name="whatsapp_ok" value="1"> ${escapeHtml(form.whatsappText)}</label>`,
+	] : []),
 	`  <p>${escapeHtml(form.consentText)}</p>`,
 	`  <button>${escapeHtml(form.button)}</button>`,
 	`</form>`,
@@ -57,6 +61,13 @@ function FieldsEditor({ value, onChange }: { value: typeof EMPTY; onChange: (pat
 					</div>
 				)}
 			</fieldset>
+			<div className="space-y-2 rounded-lg border border-neutral-200 p-3">
+				<label className="flex items-start gap-2 text-sm">
+					<input type="checkbox" className="mt-1" checked={value.whatsapp} onChange={(event) => onChange({ whatsapp: event.target.checked })} />
+					<span>Pedir WhatsApp, para os áudios dos funis. A pessoa precisa marcar a autorização.</span>
+				</label>
+				{value.whatsapp && <Input value={value.whatsappText} aria-label="Texto da autorização de WhatsApp" onChange={(event) => onChange({ whatsappText: event.target.value })} />}
+			</div>
 			<label className="block space-y-1">
 				<span className="block text-xs font-medium text-neutral-600">Texto do botão</span>
 				<Input value={value.button} onChange={(event) => onChange({ button: event.target.value })} />

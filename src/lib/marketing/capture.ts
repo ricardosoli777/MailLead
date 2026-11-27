@@ -3,6 +3,7 @@ import { newId } from "@/lib/ids";
 import type { CaptureForm, CaptureHook, CaptureKey, FormField, SubmitResult } from "./capture-types";
 import { importContacts, unsubscribeAll } from "./contacts";
 import { cleanFields, emailHash, isValidEmail, normalizeEmail, normalizeTags } from "./contacts-utils";
+import { readPhone } from "./whatsapp";
 
 const HOUR = 60 * 60 * 1000;
 export const CONFIRM_TTL_MS = 7 * 24 * HOUR;
@@ -34,12 +35,13 @@ type Target = { name: string; listId: string; consentText: string; tags: readonl
 export const MAX_FORM_FIELDS = 8;
 export const DEFAULT_BUTTON = "Quero receber";
 export const DEFAULT_CONSENT = "Aceito receber novidades e ofertas por e-mail.";
+export const DEFAULT_WHATSAPP_CONSENT = "Quero receber mensagens e áudios pelo WhatsApp.";
 // Name and e-mail are always there, and "website" is the field only robots fill.
-const RESERVED = new Set(["email", "e-mail", "nome", "name", "website"]);
+const RESERVED = new Set(["email", "e-mail", "nome", "name", "website", "whatsapp_phone", "whatsapp_ok"]);
 
 /** The extra fields and the button text of a form. */
-export function readFormExtras(input: unknown): { fields: FormField[]; button: string } {
-	const value = (input ?? {}) as { fields?: unknown; button?: unknown };
+export function readFormExtras(input: unknown): { fields: FormField[]; button: string; whatsappText: string } {
+	const value = (input ?? {}) as { fields?: unknown; button?: unknown; whatsapp?: unknown; whatsappText?: unknown };
 	const fields: FormField[] = [];
 	for (const raw of Array.isArray(value.fields) ? (value.fields as { label?: unknown; required?: unknown }[]) : []) {
 		const label = typeof raw?.label === "string" ? raw.label.trim().slice(0, 60) : "";
@@ -48,27 +50,28 @@ export function readFormExtras(input: unknown): { fields: FormField[]; button: s
 		fields.push({ key, label, required: raw.required === true });
 	}
 	const button = typeof value.button === "string" ? value.button.trim().slice(0, 40) : "";
-	return { fields, button: button || DEFAULT_BUTTON };
+	const text = typeof value.whatsappText === "string" ? value.whatsappText.trim().slice(0, 300) : "";
+	return { fields, button: button || DEFAULT_BUTTON, whatsappText: value.whatsapp === true ? text || DEFAULT_WHATSAPP_CONSENT : "" };
 }
 
-type FormInput = Target & { doubleOptIn?: boolean; fields?: FormField[]; button?: string };
-const formValues = (input: FormInput) => [input.name, input.listId, JSON.stringify(input.tags), input.consentText, input.doubleOptIn === false ? 0 : 1, JSON.stringify(input.fields ?? []), input.button ?? DEFAULT_BUTTON];
+type FormInput = Target & { doubleOptIn?: boolean; fields?: FormField[]; button?: string; whatsappText?: string };
+const formValues = (input: FormInput) => [input.name, input.listId, JSON.stringify(input.tags), input.consentText, input.doubleOptIn === false ? 0 : 1, JSON.stringify(input.fields ?? []), input.button ?? DEFAULT_BUTTON, input.whatsappText ?? ""];
 
 export async function createForm(db: D1Database, input: FormInput, now = Date.now()): Promise<string> {
 	const id = newId("frm");
-	await db.prepare("INSERT INTO marketing_forms (id, name, list_id, tags, consent_text, double_opt_in, fields, button, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+	await db.prepare("INSERT INTO marketing_forms (id, name, list_id, tags, consent_text, double_opt_in, fields, button, whatsapp_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		.bind(id, ...formValues(input), now).run();
 	return id;
 }
 
 export async function updateForm(db: D1Database, id: string, input: FormInput): Promise<boolean> {
-	return (await db.prepare("UPDATE marketing_forms SET name = ?, list_id = ?, tags = ?, consent_text = ?, double_opt_in = ?, fields = ?, button = ? WHERE id = ?")
+	return (await db.prepare("UPDATE marketing_forms SET name = ?, list_id = ?, tags = ?, consent_text = ?, double_opt_in = ?, fields = ?, button = ?, whatsapp_text = ? WHERE id = ?")
 		.bind(...formValues(input), id).run()).meta.changes > 0;
 }
 
-type FormRow = TargetRow & { double_opt_in: number; fields: string; button: string };
-const FORM_COLUMNS = "id, name, list_id, tags, consent_text, double_opt_in, fields, button";
-const toForm = (row: FormRow): CaptureForm => ({ ...target(row), doubleOptIn: !!row.double_opt_in, fields: JSON.parse(row.fields), button: row.button });
+type FormRow = TargetRow & { double_opt_in: number; fields: string; button: string; whatsapp_text: string };
+const FORM_COLUMNS = "id, name, list_id, tags, consent_text, double_opt_in, fields, button, whatsapp_text";
+const toForm = (row: FormRow): CaptureForm => ({ ...target(row), doubleOptIn: !!row.double_opt_in, fields: JSON.parse(row.fields), button: row.button, whatsappText: row.whatsapp_text });
 
 export async function getForm(db: D1Database, id: string): Promise<CaptureForm | null> {
 	const row = await db.prepare(`SELECT ${FORM_COLUMNS} FROM marketing_forms f WHERE id = ? AND EXISTS (SELECT 1 FROM marketing_lists l WHERE l.id = f.list_id)`).bind(id).first<FormRow>();
@@ -136,13 +139,26 @@ const suppression = async (db: D1Database, email: string) =>
 	(await db.prepare("SELECT reason FROM marketing_suppressions WHERE email_hash = ?").bind(await emailHash(email)).first<{ reason: string }>())?.reason ?? null;
 
 /**
+ * Records the WhatsApp permission of someone who just signed up. Only a sign-up confirmed by e-mail
+ * undoes an earlier "stop": anyone can type an address into a form without confirmation.
+ */
+async function allowWhatsApp(db: D1Database, form: CaptureForm, email: string, phone: string, confirmed: boolean, now: number): Promise<void> {
+	await db.prepare(`INSERT INTO marketing_whatsapp (contact_id, phone, source, text, consented_at)
+		SELECT id, ?, ?, ?, ? FROM marketing_contacts WHERE email = ?
+		ON CONFLICT (contact_id) DO UPDATE SET phone = excluded.phone, source = excluded.source, text = excluded.text, consented_at = excluded.consented_at, opted_out_at = NULL
+		${confirmed ? "" : "WHERE marketing_whatsapp.opted_out_at IS NULL"}`)
+		.bind(phone, `formulário ${form.name}`, form.whatsappText, now, email).run();
+}
+
+/**
  * A public form submission. The answer never says whether the address was already known, so the
  * form cannot be used to find out who is on a list.
  */
 export async function submitForm(
 	db: D1Database,
 	form: CaptureForm,
-	input: { email: string; name: string; fields?: Record<string, string> },
+	// `whatsapp` is the number typed, present only when the person ticked the box.
+	input: { email: string; name: string; fields?: Record<string, string>; whatsapp?: string },
 	deps: { sendConfirmation: (email: string, name: string, token: string) => Promise<void>; checkDomain?: (domain: string) => Promise<string | null> },
 	now = Date.now(),
 ): Promise<SubmitResult> {
@@ -150,6 +166,9 @@ export async function submitForm(
 	const name = input.name.trim().slice(0, 120);
 	if (!isValidEmail(email)) return { ok: false, error: "Confira o e-mail digitado." };
 	if (deps.checkDomain && (await deps.checkDomain(email.slice(email.lastIndexOf("@") + 1)))) return { ok: false, error: "Não foi possível confirmar o domínio deste e-mail." };
+	const wantsWhatsApp = !!form.whatsappText && input.whatsapp !== undefined;
+	const phone = wantsWhatsApp ? readPhone(input.whatsapp) : null;
+	if (wantsWhatsApp && !phone) return { ok: false, error: "Informe o WhatsApp com DDD, por exemplo 11 99999-9999." };
 	// Only the fields the form asks for are kept.
 	const given = cleanFields(input.fields);
 	const fields: Record<string, string> = {};
@@ -160,6 +179,8 @@ export async function submitForm(
 
 	if (!form.doubleOptIn) {
 		await importContacts(db, [{ line: 1, email, name, fields }], { listId: form.listId, consent: { source: `formulário ${form.name}`, text: form.consentText, consentedAt: now }, tags: form.tags, origin: "formulário", now });
+		// A blocked address is refused by the import, and then gets no permission either.
+		if (phone && !(await suppression(db, email))) await allowWhatsApp(db, form, email, phone, false, now);
 		return { ok: true, confirm: false };
 	}
 
@@ -174,7 +195,7 @@ export async function submitForm(
 
 	const token = randomSecret();
 	const hash = await sha256(token);
-	await db.prepare("INSERT INTO marketing_pending (token_hash, form_id, email, name, fields, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(hash, form.id, email, name, JSON.stringify(fields), now).run();
+	await db.prepare("INSERT INTO marketing_pending (token_hash, form_id, email, name, fields, phone, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(hash, form.id, email, name, JSON.stringify(fields), phone ?? "", now).run();
 	try {
 		await deps.sendConfirmation(email, name, token);
 	} catch (error) {
@@ -186,10 +207,10 @@ export async function submitForm(
 	return done;
 }
 
-type Pending = { form_id: string; email: string; name: string; fields: string; confirmed_at: number | null };
+type Pending = { form_id: string; email: string; name: string; fields: string; phone: string; confirmed_at: number | null };
 
 export async function findPending(db: D1Database, token: string, now = Date.now()): Promise<Pending | null> {
-	return db.prepare("SELECT form_id, email, name, fields, confirmed_at FROM marketing_pending WHERE token_hash = ? AND created_at >= ?").bind(await sha256(token), now - CONFIRM_TTL_MS).first<Pending>();
+	return db.prepare("SELECT form_id, email, name, fields, phone, confirmed_at FROM marketing_pending WHERE token_hash = ? AND created_at >= ?").bind(await sha256(token), now - CONFIRM_TTL_MS).first<Pending>();
 }
 
 /** The person clicked the button: consent is recorded now. */
@@ -208,6 +229,7 @@ export async function confirmSubscription(db: D1Database, token: string, now = D
 		await db.prepare("DELETE FROM marketing_suppressions WHERE email_hash = ?").bind(hash).run();
 	}
 	await importContacts(db, [{ line: 1, email: pending.email, name: pending.name, fields: JSON.parse(pending.fields) }], { listId: form.listId, consent: { source: `formulário ${form.name} (confirmado por e-mail)`, text: form.consentText, consentedAt: now }, tags: form.tags, origin: "confirmação", now });
+	if (pending.phone && form.whatsappText) await allowWhatsApp(db, form, pending.email, pending.phone, true, now);
 	await db.prepare("UPDATE marketing_list_members SET unsubscribed_at = NULL WHERE list_id = ? AND contact_id IN (SELECT id FROM marketing_contacts WHERE email_hash = ?)").bind(form.listId, hash).run();
 	await db.prepare("UPDATE marketing_pending SET confirmed_at = ? WHERE token_hash = ?").bind(now, await sha256(token)).run();
 	return true;

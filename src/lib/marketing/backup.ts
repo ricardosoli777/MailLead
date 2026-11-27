@@ -17,8 +17,8 @@ const CHUNK = 400_000;
  * people, so nobody is queued again while a restore is half done.
  */
 export const BACKUP_TABLES = [
-	"marketing_settings", "marketing_suppressions", "marketing_templates", "marketing_assets", "marketing_lists",
-	"marketing_campaigns", "marketing_sends", "marketing_flows", "marketing_flow_runs", "marketing_contacts",
+	"marketing_settings", "marketing_suppressions", "marketing_templates", "marketing_assets", "marketing_audio", "marketing_lists",
+	"marketing_campaigns", "marketing_sends", "marketing_flows", "marketing_flow_runs", "marketing_whatsapp_sends", "marketing_contacts", "marketing_whatsapp",
 	"marketing_consents", "marketing_contact_tags", "marketing_list_members", "marketing_events",
 	"marketing_forms", "marketing_pending", "marketing_api_keys", "marketing_hooks",
 ] as const;
@@ -88,6 +88,7 @@ async function* lines(file: ReadableStream<Uint8Array>): AsyncGenerator<string> 
 function calm(table: Table, row: Row): Row {
 	if (table === "marketing_sends" && (row.status === "pending" || row.status === "sending")) return { ...row, status: "skipped", error: "restaurado de backup" };
 	if (table === "marketing_campaigns" && (row.status === "running" || row.status === "scheduled")) return { ...row, status: "paused" };
+	if (table === "marketing_whatsapp_sends" && row.status === "sending") return { ...row, status: "failed", error: "restaurado de backup" };
 	if (table === "marketing_flows" && row.status === "active") return { ...row, status: "paused" };
 	return row;
 }
@@ -157,7 +158,7 @@ async function enforceErasure(db: D1Database): Promise<void> {
 	await db.batch([
 		db.prepare(`DELETE FROM marketing_pending WHERE email IN (SELECT email FROM marketing_contacts WHERE id IN (${erased}))`),
 		db.prepare(`DELETE FROM marketing_contacts WHERE id IN (${erased})`),
-		...["marketing_consents", "marketing_events", "marketing_list_members", "marketing_contact_tags", "marketing_flow_runs"]
+		...["marketing_consents", "marketing_events", "marketing_list_members", "marketing_contact_tags", "marketing_flow_runs", "marketing_whatsapp", "marketing_whatsapp_sends"]
 			.map((name) => db.prepare(`DELETE FROM ${name} WHERE contact_id NOT IN (SELECT id FROM marketing_contacts)`)),
 		db.prepare("DELETE FROM marketing_list_members WHERE list_id NOT IN (SELECT id FROM marketing_lists)"),
 	]);

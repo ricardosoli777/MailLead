@@ -1,5 +1,5 @@
 /** The funnel as a flowchart: boxes and the lines between them. Pure, shared by the builder and the server. */
-import type { Branch, FlowEdge, FlowGraph, FlowNode, FlowStep, Position, StepType } from "./flows-types";
+import type { Branch, FlowEdge, FlowGraph, FlowNode, FlowStep, Position, StepType, WaitUnit } from "./flows-types";
 
 export const MAX_STEPS = 30;
 export const START = "start";
@@ -7,13 +7,24 @@ export const NODE_WIDTH = 240;
 const COLUMN = 290;
 const ROW = 160;
 
-export const STEP_LABELS: Record<StepType, string> = { email: "Enviar e-mail", wait: "Esperar", condition: "Condição", tag: "Etiqueta", exit: "Fim" };
+export const STEP_LABELS: Record<StepType, string> = { email: "Enviar e-mail", whatsapp: "Áudio no WhatsApp", wait: "Esperar", condition: "Condição", tag: "Etiqueta", exit: "Fim" };
+
+export const WAIT_UNITS: Record<WaitUnit, { one: string; many: string; ms: number }> = {
+	seconds: { one: "segundo", many: "segundos", ms: 1000 },
+	minutes: { one: "minuto", many: "minutos", ms: 60_000 },
+	hours: { one: "hora", many: "horas", ms: 3_600_000 },
+	days: { one: "dia", many: "dias", ms: 86_400_000 },
+};
+export const MAX_WAIT = 999;
+export const readUnit = (value: unknown): WaitUnit => (typeof value === "string" && Object.hasOwn(WAIT_UNITS, value) ? (value as WaitUnit) : "days");
+export const waitText = (amount: number, unit: WaitUnit) => `${amount} ${amount === 1 ? WAIT_UNITS[unit].one : WAIT_UNITS[unit].many}`;
 
 export const newStepId = () => crypto.randomUUID().replace(/-/g, "").slice(0, 12);
 
 export function createStep(type: StepType, id = newStepId()): FlowStep {
 	switch (type) {
 		case "email": return { id, type, name: "", templateId: "", subject: "" };
+		case "whatsapp": return { id, type, name: "", audioId: "" };
 		case "wait": return { id, type, amount: 1, unit: "days" };
 		case "condition": return { id, type, test: "clicked", tag: "" };
 		case "tag": return { id, type, action: "add", tag: "" };
@@ -34,7 +45,8 @@ const coordinate = (value: unknown) => Math.max(-20000, Math.min(20000, Math.rou
 function readStep(raw: Record<string, unknown>, id: string, type: StepType): FlowStep {
 	switch (type) {
 		case "email": return { id, type, name: text(raw.name, 80), templateId: text(raw.templateId, 80), subject: text(raw.subject, 300) };
-		case "wait": return { id, type, amount: Math.trunc(Number(raw.amount)) || 0, unit: raw.unit === "hours" ? "hours" : "days" };
+		case "whatsapp": return { id, type, name: text(raw.name, 80), audioId: text(raw.audioId, 80) };
+		case "wait": return { id, type, amount: Math.trunc(Number(raw.amount)) || 0, unit: readUnit(raw.unit) };
 		case "condition": return { id, type, test: raw.test === "opened" || raw.test === "tag" ? raw.test : "clicked", tag: tagText(raw.tag) };
 		case "tag": return { id, type, action: raw.action === "remove" ? "remove" : "add", tag: tagText(raw.tag) };
 		case "exit": return { id, type };
@@ -228,7 +240,8 @@ export function graphErrors(graph: FlowGraph): Record<string, string> {
 		if (!connected.has(node.id)) errors[node.id] = "Caixa solta: ligue-a ao funil ou apague.";
 		else if (!order.includes(node.id)) errors[node.id] = "Uma linha volta para trás. O funil só anda para a frente.";
 		else if (node.type === "email" && !node.templateId) errors[node.id] = "Falta o conteúdo: escolha ou crie o e-mail.";
-		else if (node.type === "wait" && (node.amount < 1 || node.amount > 365)) errors[node.id] = "Informe a espera, de 1 a 365.";
+		else if (node.type === "whatsapp" && !node.audioId) errors[node.id] = "Falta o áudio: grave ou envie um arquivo.";
+		else if (node.type === "wait" && (node.amount < 1 || node.amount > MAX_WAIT)) errors[node.id] = `Informe a espera, de 1 a ${MAX_WAIT}.`;
 		else if (node.type === "tag" && !node.tag) errors[node.id] = "Escreva a etiqueta.";
 		else if (node.type === "condition") {
 			if (node.test === "tag" && !node.tag) errors[node.id] = "Escreva a etiqueta.";

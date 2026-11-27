@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { confirmDestructive, confirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import type { Branch, Flow, FlowDraft, FlowGraph, FlowNode, FlowStatus, Position, StepType } from "@/lib/marketing/flows-types";
-import { addNode, canConnect, connect, createStep, graphErrors, insertOnEdge, layout, MAX_STEPS, newStepId, NODE_WIDTH, openOutput, outputs, positionBelow, removeEdges, removeNodes, START, STEP_LABELS, updateNode } from "@/lib/marketing/flows-utils";
+import { addNode, canConnect, connect, createStep, graphErrors, insertOnEdge, layout, MAX_STEPS, newStepId, NODE_WIDTH, openOutput, outputs, positionBelow, removeEdges, removeNodes, START, STEP_LABELS, updateNode, waitText } from "@/lib/marketing/flows-utils";
 import { STARTERS } from "@/lib/marketing/starters";
 import type { Template } from "@/lib/marketing/types";
 import { PickDialog, StartDialog, StepDialog, type Option } from "./flow-dialogs";
@@ -26,7 +26,7 @@ const FLOW_STATUS: Record<FlowStatus, { label: string; className: string }> = {
 };
 
 const DRAG_TYPE = "application/x-flow-step";
-const PALETTE: StepType[] = ["email", "wait", "condition", "tag", "exit"];
+const PALETTE: StepType[] = ["email", "whatsapp", "wait", "condition", "tag", "exit"];
 const json = (method: string, body: unknown): RequestInit => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 const branchOf = (handle: string | null | undefined): Branch => (handle === "yes" || handle === "no" ? handle : "");
 
@@ -47,7 +47,8 @@ function describe(node: FlowNode, templates: Template[]): { title: string; detai
 			const template = templates.find((item) => item.id === node.templateId);
 			return { title: node.name || template?.name || "E-mail", detail: node.subject || template?.subject || "", hint: template ? "" : "Sem conteúdo ainda" };
 		}
-		case "wait": return { title: `${node.amount} ${node.unit === "hours" ? (node.amount === 1 ? "hora" : "horas") : node.amount === 1 ? "dia" : "dias"}`, detail: "antes de continuar", hint: "" };
+		case "whatsapp": return { title: node.name || "Áudio", detail: node.audioId ? "áudio pronto" : "", hint: node.audioId ? "" : "Sem áudio ainda" };
+		case "wait": return { title: waitText(node.amount, node.unit), detail: "antes de continuar", hint: "" };
 		case "condition": return node.test === "tag"
 			? { title: node.tag ? `Tem a etiqueta "${node.tag}"?` : "Tem a etiqueta?", detail: "", hint: node.tag ? "" : "Escolha a etiqueta" }
 			: { title: node.test === "clicked" ? "Clicou no e-mail?" : "Abriu o e-mail?", detail: "olha o último enviado", hint: "" };

@@ -4,7 +4,7 @@ import { esc, page } from "./unsubscribe-page";
 
 const inputType = (field: FormField) => (/telefone|whats|celular|fone/.test(field.key) ? "tel" : "text");
 
-export function formPage(form: CaptureForm, options: { email?: string; name?: string; fields?: Record<string, string>; error?: string; siteKey?: string; status?: number } = {}): Response {
+export function formPage(form: CaptureForm, options: { email?: string; name?: string; fields?: Record<string, string>; whatsapp?: string; phone?: string; error?: string; siteKey?: string; status?: number } = {}): Response {
 	const captcha = options.siteKey
 		? `<div class="cf-turnstile" data-sitekey="${esc(options.siteKey)}" style="margin-top:12px"></div><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>`
 		: "";
@@ -12,7 +12,7 @@ export function formPage(form: CaptureForm, options: { email?: string; name?: st
 <input name="name" placeholder="Seu nome" aria-label="Seu nome" maxlength="120" autocomplete="name" value="${esc(options.name ?? "")}">
 <input name="email" type="email" placeholder="Seu e-mail" aria-label="Seu e-mail" maxlength="254" autocomplete="email" required value="${esc(options.email ?? "")}">
 ${form.fields.map((field) => `<input name="campo.${esc(field.key)}" type="${inputType(field)}" placeholder="${esc(field.label)}" aria-label="${esc(field.label)}" maxlength="500"${field.required ? " required" : ""} value="${esc(options.fields?.[field.key] ?? "")}">\n`).join("")}<div class="trap" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off"></div>
-<p style="font-size:13px">${esc(form.consentText)}</p>${captcha}<button class="primary">${esc(form.button)}</button></form>`, options.status ?? 200, form.name);
+${form.whatsappText ? `<input name="whatsapp_phone" type="tel" placeholder="Seu WhatsApp com DDD" aria-label="Seu WhatsApp com DDD" maxlength="30" autocomplete="tel" value="${esc(options.phone ?? "")}">\n<label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;text-align:left"><input type="checkbox" name="whatsapp_ok" value="1" style="width:auto;margin-top:2px"${options.whatsapp !== undefined ? " checked" : ""}> <span>${esc(form.whatsappText)}</span></label>\n` : ""}<p style="font-size:13px">${esc(form.consentText)}</p>${captcha}<button class="primary">${esc(form.button)}</button></form>`, options.status ?? 200, form.name);
 }
 
 export const notFoundPage = () => page("<h1>Endereço não encontrado</h1><p>Este formulário ou link não existe mais.</p>", 404, "Não encontrado");

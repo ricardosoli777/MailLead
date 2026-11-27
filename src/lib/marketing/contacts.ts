@@ -75,7 +75,8 @@ export async function getContact(db: D1Database, id: string): Promise<ContactDet
 	const [summary] = await summarize(db, [row]);
 	const consents = await db.prepare("SELECT source, text, consented_at AS consentedAt, recorded_at AS recordedAt FROM marketing_consents WHERE contact_id = ? ORDER BY recorded_at").bind(id).all<ContactDetail["consents"][number]>();
 	const events = await db.prepare("SELECT type, detail, created_at AS createdAt FROM marketing_events WHERE contact_id = ? ORDER BY created_at DESC LIMIT 200").bind(id).all<ContactDetail["events"][number]>();
-	return { ...summary, fields: JSON.parse(row.fields), consents: consents.results, events: events.results };
+	const whatsapp = await db.prepare("SELECT phone, source, text, consented_at AS consentedAt, opted_out_at AS optedOutAt FROM marketing_whatsapp WHERE contact_id = ?").bind(id).first<NonNullable<ContactDetail["whatsapp"]>>();
+	return { ...summary, fields: JSON.parse(row.fields), consents: consents.results, events: events.results, whatsapp };
 }
 
 export async function listMailingLists(db: D1Database): Promise<MailingList[]> {
@@ -197,10 +198,17 @@ export async function eraseContact(db: D1Database, id: string, now = Date.now())
 	await db.batch([
 		db.prepare("DELETE FROM marketing_pending WHERE email = ?").bind(row.email),
 		db.prepare("INSERT OR IGNORE INTO marketing_suppressions (email_hash, reason, created_at) VALUES (?, 'erased', ?)").bind(row.email_hash, now),
-		...["marketing_consents", "marketing_events", "marketing_list_members", "marketing_contact_tags", "marketing_flow_runs"].map((table) => db.prepare(`DELETE FROM ${table} WHERE contact_id = ?`).bind(id)),
+		...["marketing_consents", "marketing_events", "marketing_list_members", "marketing_contact_tags", "marketing_flow_runs", "marketing_whatsapp", "marketing_whatsapp_sends"].map((table) => db.prepare(`DELETE FROM ${table} WHERE contact_id = ?`).bind(id)),
 		db.prepare("DELETE FROM marketing_contacts WHERE id = ?").bind(id),
 	]);
 	return true;
+}
+
+/** The person asked to stop receiving on WhatsApp. E-mail is not affected. */
+export async function stopWhatsApp(db: D1Database, id: string, now = Date.now()): Promise<boolean> {
+	const changed = await db.prepare("UPDATE marketing_whatsapp SET opted_out_at = ? WHERE contact_id = ? AND opted_out_at IS NULL").bind(now, id).run();
+	if (changed.meta.changes) await eventStatement(db, id, "whatsapp_stopped", "", now).run();
+	return changed.meta.changes > 0;
 }
 
 /** Leaves every list at once. Takes effect immediately, including for sends still queued (U3). */

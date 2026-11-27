@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eraseContact, getContact, updateContact } from "@/lib/marketing/contacts";
+import { eraseContact, getContact, stopWhatsApp, updateContact } from "@/lib/marketing/contacts";
 import { normalizeTags, readConsent } from "@/lib/marketing/contacts-utils";
 import { requireMarketing } from "@/lib/marketing/server";
 
@@ -29,6 +29,18 @@ export async function PUT(request: Request, { params }: Context) {
 		consent,
 	});
 	return NextResponse.json({ contact: await getContact(access.db, id) });
+}
+
+/** The one change made on the person's request alone: stop WhatsApp. */
+export async function PATCH(request: Request, { params }: Context) {
+	const access = await requireMarketing(request);
+	if (access.error) return access.error;
+	const { id } = await params;
+	const input = (await request.json().catch(() => null)) as { action?: unknown } | null;
+	if (input?.action !== "stop_whatsapp") return NextResponse.json({ error: "Pedido inválido." }, { status: 400 });
+	await stopWhatsApp(access.db, id);
+	const contact = await getContact(access.db, id);
+	return contact ? NextResponse.json({ contact }) : missing();
 }
 
 export async function DELETE(request: Request, { params }: Context) {

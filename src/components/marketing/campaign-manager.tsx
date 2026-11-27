@@ -86,7 +86,7 @@ export function CampaignManager() {
 		await marketingRequest("/api/marketing/campaigns", json("POST", body()));
 		setForm(EMPTY);
 		setReview(null);
-		setMessage({ error: false, text: scheduled ? "Campanha agendada." : "Campanha criada. O envio começa em até 5 minutos." });
+		setMessage({ error: false, text: scheduled ? "Campanha agendada." : "Campanha criada. O envio começa em cerca de 1 minuto." });
 		load();
 	});
 	const act = (id: string, action: "pause" | "resume" | "cancel") => run(async () => {
